@@ -140,3 +140,16 @@ subprocess.CalledProcessError: Command '['git', 'push', '-u', 'origin', 'main']'
 2026-06-08 21:19:53,607 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
 2026-06-08 21:21:46,318 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
 2026-06-08 21:21:46,723 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-08 21:21:47,446 - jarvis.sync - ERROR - GitHub Sync // Sync failed
+Traceback (most recent call last):
+  File "/home/shaun/jarvis/src/jarvis/sync/github_sync.py", line 95, in sync_workspace
+    subprocess.run(["git", "push", "-u", "origin", "main"], cwd=str(repo_root), check=True)
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['git', 'push', '-u', 'origin', 'main']' returned non-zero exit status 128.
+2026-06-09 03:00:02,292 - jarvis.evolution - INFO - Subconscious Evolution // Starting nightly cycle...
+2026-06-09 03:00:04,645 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-09 03:00:04,659 - jarvis.evolution - INFO - Subconscious // Researched Saint: St. Ephrem
+2026-06-09 03:00:58,815 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-09 03:02:45,953 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-09 03:02:47,080 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"

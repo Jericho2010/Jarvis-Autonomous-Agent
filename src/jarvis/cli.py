@@ -67,7 +67,7 @@ PT_STYLE = Style.from_dict({
     "completion-menu.meta.completion.current": "bg:#61afef #282c34",
 })
 
-ASCII_ART = """[bold cyan]
+ASCII_ART = r"""[bold cyan]
       _   _   ___ __   __ ___  ___ 
    _ | | /_\ | _ \\\\ \\\\ / // __|/ __|
   | || |/ _ \\\\|   / \\\\ V / \\\\__ \\\\__ \\\\
