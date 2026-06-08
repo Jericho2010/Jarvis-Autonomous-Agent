@@ -96,7 +96,7 @@ async def run_evolution():
     
     # 1. Instantiate the primary client for hagiography/reflection
     client = OpenAIChatCompletionClient(
-        model="deepseek-ai/deepseek-r1",
+        model="meta/llama-3.3-70b-instruct",
         api_key=api_key,
         base_url="https://integrate.api.nvidia.com/v1"
     )

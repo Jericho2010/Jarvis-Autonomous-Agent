@@ -14,11 +14,11 @@ logger = logging.getLogger("jarvis.agent")
 console = Console()
 
 DEFAULT_FALLBACK_LADDER = [
-    "deepseek-ai/deepseek-r1",
-    "deepseek-ai/deepseek-coder",
-    "qwen/qwen2.5-72b-instruct",
+    "deepseek-ai/deepseek-v4-pro",
     "meta/llama-3.3-70b-instruct",
-    "microsoft/phi-4"
+    "nvidia/llama-3.1-nemotron-70b-instruct",
+    "qwen/qwen2.5-coder-32b-instruct",
+    "microsoft/phi-4-multimodal-instruct"
 ]
 
 class ToolTelemetryMiddleware(FunctionMiddleware):
