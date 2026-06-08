@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+src/evolution/subconscious.py
+src/jarvis/cli.py
+src/jarvis.egg-info/PKG-INFO
+src/jarvis.egg-info/SOURCES.txt
+src/jarvis.egg-info/dependency_links.txt
+src/jarvis.egg-info/requires.txt
+src/jarvis.egg-info/top_level.txt
+src/jarvis/core/agent.py
+src/jarvis/memory/memory_manager.py
+src/jarvis/skills/skill_forge.py
+src/jarvis/sync/github_sync.py

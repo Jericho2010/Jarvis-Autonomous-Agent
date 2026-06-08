@@ -1,0 +1,27 @@
+[project]
+name = "jarvis"
+version = "0.1.0"
+description = "Jarvis: AI companion TUI with subconscious evolution and custom skills"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "agent-framework-core",
+    "agent-framework-openai",
+    "prompt-toolkit>=3.0.43",
+    "rich>=13.7.0",
+    "typer>=0.9.0",
+    "openai>=1.12.0",
+    "aiosqlite>=0.19.0",
+    "gitpython>=3.1.41",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[tool.uv.sources]
+agent-framework-core = { path = "/home/shaun/agent-framework/python/packages/core", editable = true }
+agent-framework-openai = { path = "/home/shaun/agent-framework/python/packages/openai", editable = true }
