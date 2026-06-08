@@ -1,0 +1,61 @@
+2026-06-08 21:16:58,648 - jarvis.evolution - INFO - Subconscious Evolution // Starting nightly cycle...
+2026-06-08 21:16:59,769 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 404 Not Found"
+2026-06-08 21:16:59,771 - jarvis.evolution - WARNING - Subconscious // LLM Saint research failed: ("<class 'agent_framework_openai._chat_completion_client.OpenAIChatCompletionClient'> service failed to complete the prompt: 404 page not found", NotFoundError('404 page not found')). Using local dictionary fallback.
+2026-06-08 21:16:59,916 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 404 Not Found"
+2026-06-08 21:16:59,917 - jarvis.evolution - ERROR - Dream generation failed
+Traceback (most recent call last):
+  File "/home/shaun/agent-framework/python/packages/openai/agent_framework_openai/_chat_completion_client.py", line 555, in _get_response
+    await client.chat.completions.create(stream=False, **options_dict), options
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/jarvis/.venv/lib/python3.12/site-packages/openai/resources/chat/completions/completions.py", line 2814, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "/home/shaun/jarvis/.venv/lib/python3.12/site-packages/openai/_base_client.py", line 1931, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/jarvis/.venv/lib/python3.12/site-packages/openai/_base_client.py", line 1716, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.NotFoundError: 404 page not found
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/shaun/jarvis/src/evolution/subconscious.py", line 167, in run_evolution
+    dream_resp = await client.get_response(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_tools.py", line 2442, in _get_response
+    await super_get_response(
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/observability.py", line 1583, in _get_response
+    await super_get_response(
+  File "/home/shaun/agent-framework/python/packages/openai/agent_framework_openai/_chat_completion_client.py", line 571, in _get_response
+    raise ChatClientException(
+agent_framework.exceptions.ChatClientException: ("<class 'agent_framework_openai._chat_completion_client.OpenAIChatCompletionClient'> service failed to complete the prompt: 404 page not found", NotFoundError('404 page not found'))
+2026-06-08 21:17:00,105 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 404 Not Found"
+2026-06-08 21:17:00,105 - jarvis.evolution - ERROR - Reflection failed
+Traceback (most recent call last):
+  File "/home/shaun/agent-framework/python/packages/openai/agent_framework_openai/_chat_completion_client.py", line 555, in _get_response
+    await client.chat.completions.create(stream=False, **options_dict), options
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/jarvis/.venv/lib/python3.12/site-packages/openai/resources/chat/completions/completions.py", line 2814, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "/home/shaun/jarvis/.venv/lib/python3.12/site-packages/openai/_base_client.py", line 1931, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/jarvis/.venv/lib/python3.12/site-packages/openai/_base_client.py", line 1716, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.NotFoundError: 404 page not found
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/shaun/jarvis/src/evolution/subconscious.py", line 201, in run_evolution
+    reflect_resp = await client.get_response(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_tools.py", line 2442, in _get_response
+    await super_get_response(
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/observability.py", line 1583, in _get_response
+    await super_get_response(
+  File "/home/shaun/agent-framework/python/packages/openai/agent_framework_openai/_chat_completion_client.py", line 571, in _get_response
+    raise ChatClientException(
+agent_framework.exceptions.ChatClientException: ("<class 'agent_framework_openai._chat_completion_client.OpenAIChatCompletionClient'> service failed to complete the prompt: 404 page not found", NotFoundError('404 page not found'))
