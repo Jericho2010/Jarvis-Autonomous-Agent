@@ -1,0 +1,149 @@
+2026-06-10 07:51:41,547 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 08:00:38,044 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 08:00:57,637 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 08:01:49,321 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 08:08:53,335 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 08:09:27,773 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 08:13:35,423 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 08:19:40,194 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 08:19:46,949 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-10 08:19:47,824 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 08:19:58,020 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-10 08:19:58,626 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 08:21:39,092 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: qwen/qwen3-coder-480b-a35b-instruct
+2026-06-10 08:22:05,193 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 08:23:05,343 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-10 08:23:06,035 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 08:23:23,067 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-10 08:23:23,634 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 08:24:02,473 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-10 08:24:03,069 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 08:24:35,375 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-10 08:24:36,134 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 08:24:55,674 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-10 08:24:56,410 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 08:25:15,214 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-10 08:25:42,287 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 18:12:58,717 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 18:13:33,510 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 18:15:01,895 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 18:16:15,618 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: qwen/qwen3-coder-480b-a35b-instruct
+2026-06-10 18:16:24,588 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 18:16:40,294 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: qwen/qwen3-coder-480b-a35b-instruct
+2026-06-10 18:16:45,999 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 18:17:45,670 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-10 18:17:46,309 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 19:01:59,652 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 19:01:59,653 - agent_framework._workflows._validation - INFO - Dead-end executors detected (no outgoing edges): ['JARVIS_CORE']. Verify these are intended as final nodes in the workflow.
+2026-06-10 19:09:41,626 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 19:09:41,627 - agent_framework._workflows._validation - INFO - Dead-end executors detected (no outgoing edges): ['JARVIS_CORE']. Verify these are intended as final nodes in the workflow.
+2026-06-10 19:09:49,921 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-10 19:09:49,921 - jarvis.agent - WARNING - Trinity Council // Streaming model nvidia/nemotron-3-ultra-550b-a55b failed: OpenAIChatCompletionClient.get_response() got an unexpected keyword argument 'session'. Rotating...
+2026-06-10 19:09:49,928 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-10 19:09:49,929 - jarvis.agent - WARNING - Trinity Council // Streaming model stepfun-ai/step-3.7-flash failed: OpenAIChatCompletionClient.get_response() got an unexpected keyword argument 'session'. Rotating...
+2026-06-10 19:09:49,934 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-10 19:09:49,935 - jarvis.agent - WARNING - Trinity Council // Streaming model moonshotai/kimi-k2.6 failed: OpenAIChatCompletionClient.get_response() got an unexpected keyword argument 'session'. Rotating...
+2026-06-10 19:09:49,938 - jarvis.cli - ERROR - Error in execute_turn run_agent
+Traceback (most recent call last):
+  File "/home/shaun/jarvis/src/jarvis/cli.py", line 360, in run_agent
+    async for chunk in self.agent.run(messages=agent_msgs, stream=True):
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_workflows/_agent.py", line 368, in _run_stream_impl
+    async for event in self._run_core(
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_workflows/_agent.py", line 462, in _run_core
+    async for event in self.workflow.run(
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_workflows/_workflow.py", line 814, in _run_core
+    async for event in self._run_workflow_with_tracing(
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_workflows/_workflow.py", line 578, in _run_workflow_with_tracing
+    await initial_executor_fn()
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_workflows/_workflow.py", line 665, in _execute_with_message_or_checkpoint
+    await executor.execute(
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_workflows/_executor.py", line 279, in execute
+    await handler(message, context)
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_workflows/_executor.py", line 664, in wrapper
+    return await func(self, message, ctx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_workflows/_agent_executor.py", line 289, in from_messages
+    await self._run_agent_and_emit(ctx)
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_workflows/_agent_executor.py", line 385, in _run_agent_and_emit
+    response = await self._run_agent_streaming(cast(WorkflowContext[Never, AgentResponseUpdate], ctx))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_workflows/_agent_executor.py", line 488, in _run_agent_streaming
+    async for update in stream:
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/jarvis/src/jarvis/core/agent.py", line 176, in _stream_with_fallback
+    raise RuntimeError(f"All Trinity Council streaming models failed. Last exception: {last_exception}")
+RuntimeError: All Trinity Council streaming models failed. Last exception: OpenAIChatCompletionClient.get_response() got an unexpected keyword argument 'session'
+2026-06-10 19:22:03,686 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 19:22:03,686 - agent_framework._workflows._validation - INFO - Dead-end executors detected (no outgoing edges): ['JARVIS_CORE']. Verify these are intended as final nodes in the workflow.
+2026-06-10 19:22:15,530 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: qwen/qwen3-coder-480b-a35b-instruct
+2026-06-10 19:22:16,749 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 19:22:18,364 - agent_framework._workflows._runner - INFO - Yielding pre-loop events
+2026-06-10 19:22:18,373 - agent_framework._workflows._runner - INFO - Starting superstep 1
+2026-06-10 19:22:18,424 - agent_framework._workflows._runner - INFO - Completed superstep 1
+2026-06-10 19:22:18,424 - agent_framework._workflows._runner - INFO - Workflow completed after 1 supersteps
+2026-06-10 19:22:33,935 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-10 19:31:46,577 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 19:31:46,577 - agent_framework._workflows._validation - INFO - Dead-end executors detected (no outgoing edges): ['JARVIS_CORE']. Verify these are intended as final nodes in the workflow.
+2026-06-10 19:31:59,945 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-10 19:32:18,640 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 19:33:23,912 - jarvis.cli - ERROR - Error in execute_turn run_agent
+Traceback (most recent call last):
+  File "/home/shaun/jarvis/src/jarvis/cli.py", line 360, in run_agent
+    async for chunk in self.agent.run(messages=agent_msgs, stream=True):
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_workflows/_agent.py", line 368, in _run_stream_impl
+    async for event in self._run_core(
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_workflows/_agent.py", line 479, in _run_core
+    raise AgentException(f"The underlying workflow is in an invalid state to restart: {final_state}.")
+agent_framework.exceptions.AgentException: The underlying workflow is in an invalid state to restart: WorkflowRunState.IN_PROGRESS.
+2026-06-10 22:32:56,528 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 22:33:07,044 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: qwen/qwen3-coder-480b-a35b-instruct
+2026-06-10 22:33:22,046 - jarvis.agent - WARNING - Trinity Council // Streaming model qwen/qwen3-coder-480b-a35b-instruct failed: . Rotating...
+2026-06-10 22:33:22,059 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-10 22:33:28,652 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 22:33:44,844 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-10 22:33:45,556 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 22:34:38,767 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-10 22:34:41,157 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 22:34:51,299 - agent_framework - INFO - Function name: execute_bash
+2026-06-10 22:34:51,302 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-10 22:34:51,302 - agent_framework - INFO - Function duration: 0.002617s
+2026-06-10 22:34:57,946 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 22:35:00,418 - agent_framework - INFO - Function name: execute_bash
+2026-06-10 22:35:00,458 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-10 22:35:00,458 - agent_framework - INFO - Function duration: 0.039226s
+2026-06-10 22:35:01,941 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 22:35:25,291 - agent_framework - INFO - Function name: read_file_content
+2026-06-10 22:35:25,292 - agent_framework - INFO - Function name: read_file_content
+2026-06-10 22:35:25,293 - agent_framework - INFO - Function read_file_content succeeded.
+2026-06-10 22:35:25,293 - agent_framework - INFO - Function duration: 0.002184s
+2026-06-10 22:35:25,295 - agent_framework - INFO - Function read_file_content succeeded.
+2026-06-10 22:35:25,295 - agent_framework - INFO - Function duration: 0.002616s
+2026-06-10 22:35:28,370 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 22:36:12,703 - agent_framework - INFO - Function name: forge_skill
+2026-06-10 22:36:12,893 - agent_framework - INFO - Function forge_skill succeeded.
+2026-06-10 22:36:12,893 - agent_framework - INFO - Function duration: 0.190002s
+2026-06-10 22:36:25,606 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 22:36:27,896 - jarvis.agent - ERROR - Trinity Council // Stream stalled midway after starting: 
+2026-06-10 23:15:22,285 - agent_framework - WARNING - The provided chat client does not support function invoking, this might limit agent capabilities.
+2026-06-10 23:15:33,220 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-10 23:15:35,467 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-10 23:16:29,154 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-10 23:36:23,388 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-10 23:36:29,869 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"

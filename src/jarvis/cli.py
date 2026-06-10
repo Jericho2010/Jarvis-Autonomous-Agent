@@ -17,13 +17,24 @@ from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from agent_framework._types import Message
 
 # Load env from root
 load_dotenv(Path("/home/shaun/jarvis/.env"))
 
 from jarvis.memory.memory_manager import MemoryManager
-from jarvis.core.agent import create_jarvis_agent, DEFAULT_FALLBACK_LADDER
+from jarvis.core.agent import create_jarvis_agent, DEFAULT_SYSTEM_PROMPT
 from jarvis.skills.skill_forge import load_skills_from_dir, forge_skill
+from jarvis.evolution.subconscious import SubconsciousEngine
+from agent_framework._types import Message
+import contextlib
+import warnings
+
+def _load_skills_silent(path):
+    with open(os.devnull, 'w') as devnull:
+        with contextlib.redirect_stdout(devnull), contextlib.redirect_stderr(devnull), warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            return load_skills_from_dir(path)
 
 console = Console()
 logging.basicConfig(
@@ -38,7 +49,8 @@ SLASH_COMMANDS = {
     "/new": "Start a fresh dialogue session",
     "/tasks": "Show the Jarvis implementation task list",
     "/skills": "List all loaded skill modules",
-    "/models": "List Trinity Council fallback models",
+    "/model": "List or set the primary Trinity model",
+    "/cron": "Register a subconscious routine: /cron <seconds> \"<prompt>\"",
     "/clear": "Clear the screen",
     "/exit": "Exit Jarvis TUI"
 }
@@ -58,44 +70,32 @@ class SlashCompleter(Completer):
                     display_meta=desc
                 )
 
+# Iron Man / J.A.R.V.I.S Theme (Refined for Simplicity & Usability)
 PT_STYLE = Style.from_dict({
-    "prompt": "bold cyan",
-    "bottom-toolbar": "bg:#1e1e24 #abb2bf",
-    "completion-menu.completion": "bg:#282c34 #abb2bf",
-    "completion-menu.completion.current": "bg:#61afef #282c34 bold",
-    "completion-menu.meta.completion": "bg:#282c34 #abb2bf",
-    "completion-menu.meta.completion.current": "bg:#61afef #282c34",
+    "prompt": "bold #FFD700",
+    "bottom-toolbar": "bg:ansired ansiyellow bold",
+    "completion-menu.completion": "bg:#2b2b2b #FFD700",
+    "completion-menu.completion.current": "bg:#FFD700 #4A0000 bold",
+    "completion-menu.meta.completion": "bg:#2b2b2b #cccccc",
+    "completion-menu.meta.completion.current": "bg:#FFD700 #4A0000",
 })
 
-ASCII_ART = r"""[bold cyan]
+ASCII_ART = r"""[bold #FFD700]
       _   _   ___ __   __ ___  ___ 
-   _ | | /_\ | _ \\\\ \\\\ / // __|/ __|
-  | || |/ _ \\\\|   / \\\\ V / \\\\__ \\\\__ \\\\
-   \\\\__//_/ \\\\_\\\\_|_\  \\\\_/  |___/|___/
-[/]"""
-
-def print_splash():
-    console.print(ASCII_ART)
-    console.print(Rule("[bold]Jarvis System Terminal[/]", style="cyan"))
-    console.print(
-        Panel(
-            "[bold green]⬡ Connection Status:[/] [white]Active (NVIDIA NIM)[/]\n"
-            "[bold yellow]⚙ Primary Reasoning:[/] [white]deepseek-ai/deepseek-r1[/]\n"
-            "[bold blue]📐 Fallback Ladder:[/]  [white]deepseek-coder, qwen2.5-72b, llama-3.3-70b, phi-4[/]",
-            border_style="cyan",
-            padding=(0, 2)
-        )
-    )
-    console.print("Type [bold yellow]/help[/] for a list of commands. Press [bold green]Alt+Enter[/] to submit multiline prompts.\n")
+   _ | | /_\ | _ \ \ \ / // __|/ __|
+  | || |/ _ \|   / \ V / \__ \__ \
+   \__//_/ \_\_|_\  \_/  |___/|___/[/]
+         [bold cyan]⬡ ARC REACTOR ONLINE[/]
+"""
 
 def print_help():
-    help_text = "\n".join([f"[bold yellow]{cmd}[/] - {desc}" for cmd, desc in SLASH_COMMANDS.items()])
-    console.print(Panel(help_text, title="Slash Command Manual", border_style="cyan", title_align="left"))
+    help_text = "\n".join([f"[bold #FFD700]{cmd}[/] - {desc}" for cmd, desc in SLASH_COMMANDS.items()])
+    console.print(Panel(help_text, title="Slash Command Manual", border_style="#E63946", title_align="left"))
 
 async def print_tasks():
     task_path = Path("/home/shaun/.gemini/antigravity-ide/brain/bb5fbcbe-90fd-4c47-aa08-f0105ba53197/task.md")
     if task_path.exists():
-        console.print(Panel(task_path.read_text(), title="Jarvis Implementation Tasks", border_style="cyan"))
+        console.print(Panel(task_path.read_text(), title="Jarvis Implementation Tasks", border_style="#FFD700"))
     else:
         console.print("[yellow]No tasks file found at active path.[/]")
 
@@ -110,12 +110,11 @@ class JarvisTUI:
         self._setup_bindings()
         
     def _setup_bindings(self):
-        @self.kb.add("escape", "enter")
-        @self.kb.add("alt-enter")
+        @self.kb.add("enter")
         def _submit(event):
             event.current_buffer.validate_and_handle()
 
-        @self.kb.add("enter")
+        @self.kb.add("escape", "enter")
         def _enter(event):
             event.current_buffer.insert_text("\n")
 
@@ -124,44 +123,84 @@ class JarvisTUI:
             event.current_buffer.insert_text("/")
             event.current_buffer.start_completion(select_first=False)
 
+    def print_splash(self):
+        primary = "Dynamic Trinity"
+        if self.agent and hasattr(self.agent, "client") and self.agent.client.primary_model != "dynamic":
+            primary = self.agent.client.primary_model
+
+        console.print(ASCII_ART)
+        console.print(Rule("[bold #FFD700]MARK XLVII - SYSTEM TERMINAL[/]", style="#E63946"))
+        console.print(
+            Panel(
+                "[bold cyan]⬡ Connection Status:[/] [white]Active (NVIDIA NIM)[/]\n"
+                f"[bold #FFD700]⚙ Primary Routing:[/] [white]{primary}[/]\n"
+                "[bold #E63946]📐 Fallback Mode:[/]   [white]Dynamic 3-Model Basket[/]",
+                border_style="#FFD700",
+                padding=(0, 2)
+            )
+        )
+        console.print("Type [bold #FFD700]/help[/] for a list of commands. Press [bold cyan]Enter[/] to submit. Press [bold cyan]Alt+Enter[/] for multiline.\n")
+
+
     def _bottom_toolbar(self):
+        primary = "dynamic"
+        if self.agent and hasattr(self.agent, "client"):
+            primary = self.agent.client.primary_model
+            
         return HTML(
             f" <b>Session:</b> {self.session_id} | "
-            f"<b>Primary:</b> deepseek-r1 | "
-            f"<b>API Endpoint:</b> NIM (integrate.api.nvidia.com) | "
+            f"<b>Primary:</b> {primary} | "
+            f"<b>Endpoint:</b> NIM | "
             f"Type / for commands"
         )
 
     async def init(self):
         await self.memory.init_db()
         if not self.api_key:
-            console.print("[bold red]WARNING: NVIDIA_API_KEY environment variable is not set. API calls will fail.[/]")
+            console.print("[bold #E63946]WARNING: NVIDIA_API_KEY environment variable is not set. API calls will fail.[/]")
         
         # Load local skills
-        skills_tools = load_skills_from_dir(Path("/home/shaun/jarvis/skills"))
+        skills_tools = _load_skills_silent(Path("/home/shaun/jarvis/skills"))
         
         # Register forge_skill tool
-        all_tools = [forge_skill] + skills_tools
+        self.all_tools = [forge_skill] + skills_tools
         
         # Inject user profile into system instructions
         profile = await self.memory.build_profile_prompt()
-        custom_instructions = f"{DEFAULT_SYSTEM_PROMPT}\n\n{profile}"
+        self.custom_instructions = f"{DEFAULT_SYSTEM_PROMPT}\n\n{profile}"
         
         self.agent = create_jarvis_agent(
             api_key=self.api_key or "",
-            instructions_override=custom_instructions,
-            tools=all_tools
+            instructions_override=self.custom_instructions,
+            tools=self.all_tools
         )
         
         # Log session startup
         await self.memory.create_session(
             session_id=self.session_id,
             model="trinity-council",
-            system_prompt=custom_instructions
+            system_prompt=self.custom_instructions
         )
+        
+        async def _background_runner(prompt: str):
+            msgs = [Message(role="user", contents=[prompt])]
+            response = await self.agent.run(messages=msgs)
+            await self.memory.add_message(self.session_id, "user", f"[Routine] {prompt}")
+            await self.memory.add_message(self.session_id, "assistant", f"[Routine Complete]\n{response.text}")
+            
+            import subprocess
+            try:
+                subprocess.run(['notify-send', '-a', 'JARVIS', 'Subconscious Routine Complete', prompt], check=False)
+            except Exception:
+                pass
+                
+            console.print(f"\n[dim cyan]Subconscious:[/] Routine completed. Check memory or /tasks for output.")
+
+        self.subconscious = SubconsciousEngine(_background_runner)
+        self.subconscious.start()
 
     async def handle_slash(self, cmd: str) -> bool:
-        parts = cmd.split()
+        parts = cmd.split(maxsplit=1)
         base = parts[0].lower()
         if base == "/help":
             print_help()
@@ -172,30 +211,81 @@ class JarvisTUI:
         elif base == "/new":
             self.session_id = f"session_{int(asyncio.get_event_loop().time())}"
             await self.init()
-            console.print(f"[bold green]✓ Started new dialogue session: {self.session_id}[/]\n")
+            console.print(f"[bold #FFD700]✓ Started new dialogue session: {self.session_id}[/]\n")
             return True
         elif base == "/tasks":
             await print_tasks()
             return True
         elif base == "/skills":
-            skills_tools = load_skills_from_dir(Path("/home/shaun/jarvis/skills"))
+            skills_tools = _load_skills_silent(Path("/home/shaun/jarvis/skills"))
             if not skills_tools:
-                console.print("[yellow]No custom skills forged yet.[/]")
+                console.print("[bold #FFD700]No custom skills forged yet.[/]")
             else:
-                lines = [f"- [bold green]{t.name}[/]: {t.description}" for t in skills_tools]
-                console.print(Panel("\n".join(lines), title="Forged Skill Modules", border_style="cyan"))
+                lines = [f"- [bold #FFD700]{t.name}[/]: {t.description}" for t in skills_tools]
+                console.print(Panel("\n".join(lines), title="Forged Skill Modules", border_style="#E63946"))
             return True
-        elif base == "/models":
-            lines = [f"- {m}" for m in DEFAULT_FALLBACK_LADDER]
-            console.print(Panel("\n".join(lines), title="Trinity Fallback Ladder", border_style="cyan"))
+        elif base == "/model":
+            client = getattr(self.agent, "client", None)
+            if not client:
+                console.print("[red]Agent client not initialized.[/]")
+                return True
+                
+            basket = client.model_basket
+            
+            if len(parts) == 1:
+                # Just list
+                lines = ["[bold]Trinity Model Basket:[/bold]"]
+                for i, m in enumerate(basket):
+                    prefix = "  "
+                    if client.primary_model == m:
+                        prefix = "[bold cyan]⬡[/]"
+                    lines.append(f"{prefix} {i+1}. {m}")
+                
+                dyn_prefix = "[bold cyan]⬡[/]" if client.primary_model == "dynamic" else "  "
+                lines.append(f"{dyn_prefix} D. dynamic (Pure Random Routing)")
+                lines.append("\n[dim]Usage: /model <index|name|dynamic>[/dim]")
+                console.print(Panel("\n".join(lines), title="Model Configuration", border_style="#FFD700"))
+                return True
+            else:
+                arg = parts[1].strip().lower()
+                if arg == "dynamic" or arg == "d":
+                    client.primary_model = "dynamic"
+                    console.print("[bold #FFD700]✓ Primary model set to: dynamic (Pure Random Trinity)[/bold #FFD700]\n")
+                else:
+                    try:
+                        idx = int(arg) - 1
+                        if 0 <= idx < len(basket):
+                            client.primary_model = basket[idx]
+                            console.print(f"[bold #FFD700]✓ Primary model set to: {basket[idx]}[/bold #FFD700]\n")
+                        else:
+                            console.print("[bold #E63946]Invalid model index.[/bold #E63946]")
+                    except ValueError:
+                        # try matching by name
+                        matched = next((m for m in basket if arg in m.lower()), None)
+                        if matched:
+                            client.primary_model = matched
+                            console.print(f"[bold #FFD700]✓ Primary model set to: {matched}[/bold #FFD700]\n")
+                        else:
+                            console.print(f"[bold #E63946]Model '{arg}' not found in basket.[/bold #E63946]")
+            return True
+        elif base == "/cron":
+            try:
+                args = parts[1].split(' ', 1)
+                interval = int(args[0])
+                prompt = args[1].strip('"\'')
+                self.subconscious.add_routine(interval, prompt, f"Task_{interval}s")
+            except Exception:
+                console.print("[red]Usage: /cron <seconds> \"<prompt>\"[/red]")
             return True
         elif base == "/exit":
-            console.print("\n[dim]Goodbye. ⚙[/]\n")
+            if hasattr(self, "subconscious"):
+                self.subconscious.stop()
+            console.print("\n[dim #FFD700]System Offline. ⚙[/]\n")
             sys.exit(0)
         return False
 
     async def run_loop(self):
-        print_splash()
+        self.print_splash()
         
         # Set up prompt session
         history_path = Path("/home/shaun/jarvis/data/pt_history.txt")
@@ -216,8 +306,8 @@ class JarvisTUI:
         while True:
             try:
                 user_input = await session_pt.prompt_async(
-                    HTML("<cyan bold>❯ </cyan>"),
-                    placeholder=HTML("<style fg='#5c6370'>Ask anything, or type / for commands…</style>")
+                    HTML("<prompt>❯ </prompt>"),
+                    placeholder=HTML("<style fg='#A0A0A0'>Ask anything, or type / for commands…</style>")
                 )
                 user_input = user_input.strip()
                 if not user_input:
@@ -226,20 +316,20 @@ class JarvisTUI:
                 if user_input.startswith("/"):
                     handled = await self.handle_slash(user_input)
                     if not handled:
-                        console.print(f"[red]Unknown slash command: {user_input}[/]")
+                        console.print(f"[bold #E63946]Unknown slash command:[/] {user_input}")
                     continue
                 
                 # Execute agent turn
                 await self.execute_turn(user_input)
                 
             except KeyboardInterrupt:
-                console.print("\n[bold red]⚡ Interrupted[/]\n")
+                console.print("\n[bold #E63946]⚡ Interrupted[/]\n")
                 continue
             except EOFError:
-                console.print("\n[dim]Goodbye. ⚙[/]\n")
+                console.print("\n[dim #FFD700]System Offline. ⚙[/]\n")
                 break
             except Exception as e:
-                console.print(f"[bold red]System Error:[/] {e}")
+                console.print(f"[bold #E63946]System Error:[/] {e}")
                 logger.exception("Error in main loop")
 
     async def execute_turn(self, prompt: str):
@@ -294,38 +384,47 @@ class JarvisTUI:
                         # Update render group
                         renderables = []
                         if reasoning_text:
-                            renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="dim yellow", title_align="left"))
+                            renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="dim #FFD700", title_align="left"))
                         if response_text:
                             renderables.append(Markdown(response_text))
                             
                         live.update(Group(*renderables))
                         
-                    if chunk.finish_reason:
-                        if live:
-                            live.stop()
-                            live = None
-                        raw_buffer = ""
-                        # Store agent turn response
-                        final_text = ""
-                        if reasoning_text:
-                            final_text += f"<think>\n{reasoning_text}\n</think>\n"
-                        final_text += response_text
-                        await self.memory.add_message(
-                            session_id=self.session_id,
-                            role="assistant",
-                            content=final_text
-                        )
-                        console.print() # separating line
-                        
             except asyncio.CancelledError:
-                if live:
-                    live.stop()
-                console.print("\n[bold red]⚡ Interrupted[/]\n")
+                console.print("\n[bold #E63946]⚡ Interrupted[/]\n")
+                # Ensure we store the interruption in memory
+                final_text = ""
+                if reasoning_text:
+                    final_text += f"<think>\n{reasoning_text}\n</think>\n"
+                final_text += response_text + "\n\n[Generation Interrupted by User]"
+                
+                if final_text.strip():
+                    await self.memory.add_message(
+                        session_id=self.session_id,
+                        role="assistant",
+                        content=final_text
+                    )
             except Exception as ex:
+                console.print(f"\n[bold #E63946]Error during response generation:[/] {ex}")
+                logger.exception("Error in execute_turn run_agent")
+            finally:
                 if live:
                     live.stop()
-                console.print(f"\n[bold red]Error during response generation:[/] {ex}")
-                logger.exception("Error in execute_turn run_agent")
+                    live = None
+                
+                # Store agent turn response
+                final_text = ""
+                if reasoning_text:
+                    final_text += f"<think>\n{reasoning_text}\n</think>\n"
+                final_text += response_text
+                
+                if final_text.strip():
+                    await self.memory.add_message(
+                        session_id=self.session_id,
+                        role="assistant",
+                        content=final_text
+                    )
+                console.print() # separating line
                 
         # Start executing
         active_task = asyncio.create_task(run_agent())
@@ -334,7 +433,7 @@ class JarvisTUI:
         except KeyboardInterrupt:
             active_task.cancel()
             await active_task
-            console.print("\n[bold red]⚡ Interrupted[/]\n")
+            console.print("\n[bold #E63946]⚡ Interrupted[/]\n")
 
 async def main():
     tui = JarvisTUI()
