@@ -103,10 +103,16 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
 
     def _get_client(self, model: str) -> OpenAIChatCompletionClient:
         if model not in self._clients:
-            self._clients[model] = OpenAIChatCompletionClient(
-                model=model,
+            from openai import AsyncOpenAI
+            
+            raw_client = AsyncOpenAI(
                 api_key=self.api_key,
                 base_url=self.base_url,
+                max_retries=0
+            )
+            self._clients[model] = OpenAIChatCompletionClient(
+                model=model,
+                async_client=raw_client,
                 function_invocation_configuration={"enabled": False},
             )
         return self._clients[model]
@@ -203,8 +209,13 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
                     timeout=15.0
                 )
                 
-                async for chunk in stream:
-                    yield chunk
+                iterator = aiter(stream)
+                while True:
+                    try:
+                        chunk = await asyncio.wait_for(anext(iterator), timeout=15.0)
+                        yield chunk
+                    except StopAsyncIteration:
+                        break
                 return
             except (asyncio.TimeoutError, Exception) as e:
                 logger.warning(f"Stark Core Matrix // Streaming model {model} failed: {e}. Rotating...")
