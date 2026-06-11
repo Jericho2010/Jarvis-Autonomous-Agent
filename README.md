@@ -111,7 +111,24 @@ Inside the CLI, you can type slash commands:
 
 ---
 
-## 4. Build Log
+## 4. Architectural Deep-Dive: MAF & Hermes Evolution
+
+### Microsoft Agent Framework (MAF) Orchestration
+JARVIS is built as a native agent on top of the Microsoft Agent Framework, using a decoupled, event-driven context pipeline:
+*   **StarkNIMChatClient**: Extends `BaseChatClient` and mixes in `FunctionInvocationLayer` to support tool calling. Instead of simple wrapper invocations, it overrides response streaming to coordinate the **Stark Core Matrix** dynamic routing. It enforces `max_retries=0` and wraps header/chunk fetches in an asynchronous 15-second timeout, falling back automatically to alternate endpoints when oversubscriptions occur.
+*   **ToolTelemetryMiddleware**: A custom `FunctionMiddleware` that intercepts tool invocations, formats inputs/outputs in Stark colors (hot rod red and gold diagnostics), and manages the TUI's Rich Live display context to prevent visual duplicates.
+*   **SkillsProvider**: Utilizes the native MAF skills provider structure to scan and register python skill modules (`skills/*.py`) and YAML-packaged Markdown skills.
+
+### Hermes Self-Evolution Core
+The self-evolution engine implements the **Hermes Directive**—allowing the agent's behaviors and personality to modify and author themselves dynamically based on daily operation:
+*   **The Soul Core Skill (`skills/jarvis_soul/SKILL.md`)**: The butler persona (Edwin Jarvis) is packaged as a native MAF skill with standard frontmatter. At startup, the TUI parses the `SKILL.md` file and dynamically injects the body instructions into the active agent's system prompt instructions.
+*   **Subconscious Engine (`src/evolution/subconscious.py`)**: Runs daily at 3:00 AM. It retrieves the last 24 hours of message transactions, logs, and tool outcomes from the SQLite database. It compiles these facts, runs a high-temperature dream state to identify behavioral patterns, and generates updates.
+*   **Self-Authorship Rewrite**: Using the `StarkNIMChatClient` in `house_party` mode (completely LLaMA-free), the engine updates the body paragraph of `/skills/jarvis_soul/SKILL.md`. On the next boot, the TUI loads these updated guidelines, enabling the personality and sarcasm levels to adapt organically over time.
+
+---
+
+## 5. Build Log
+
 
 - **2026-06-08** - Initial Scaffolding - Created pyproject.toml, .env.example, setup.sh, run.sh, and README.md.
 - **2026-06-10** - Agent Stability Fixes - Replaced `WorkflowAgent` with raw `Agent` to prevent Ctrl+C state corruption; fixed LLM prefill streaming timeout; restored `FunctionInvocationLayer` mixin to client to enable Trinity tool-calling loop.
