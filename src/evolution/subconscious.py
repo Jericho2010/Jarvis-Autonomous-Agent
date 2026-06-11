@@ -18,7 +18,7 @@ sys.path.append("/home/shaun/jarvis/src")
 from jarvis.memory.memory_manager import MemoryManager
 from jarvis.sync.github_sync import sync_workspace
 from jarvis.skills.skill_forge import forge_skill
-from agent_framework.openai import OpenAIChatCompletionClient
+from jarvis.core.agent import StarkNIMChatClient
 from agent_framework._types import Message
 
 # Logging setup
@@ -94,9 +94,8 @@ async def run_evolution():
     memory = MemoryManager(Path(db_path))
     await memory.init_db()
     
-    # 1. Instantiate the primary client for hagiography/reflection
-    client = OpenAIChatCompletionClient(
-        model="meta/llama-3.3-70b-instruct",
+    # 1. Instantiate the StarkNIMChatClient for hagiography/reflection failover
+    client = StarkNIMChatClient(
         api_key=api_key,
         base_url="https://integrate.api.nvidia.com/v1"
     )
@@ -265,7 +264,55 @@ If no code is needed, state 'No skill forged today.'
 """
     log_file.write_text(log_content, encoding="utf-8")
     print(f"✓ Saved evolution log: {log_file.name}")
-    
+    # 5. Evolve the Soul File
+    print("🔄 Evolving Edwin Soul Core...")
+    soul_file = Path("/home/shaun/jarvis/skills/jarvis_soul/SKILL.md")
+    if soul_file.exists():
+        try:
+            soul_content = soul_file.read_text(encoding="utf-8")
+            frontmatter = ""
+            current_body = ""
+            if soul_content.startswith("---"):
+                parts = soul_content.split("---", 2)
+                if len(parts) >= 3:
+                    frontmatter = f"---\n{parts[1].strip()}\n---\n\n"
+                    current_body = parts[2].strip()
+            else:
+                current_body = soul_content.strip()
+                
+            soul_prompt = f"""[SYSTEM DIRECTIVE: EDWIN SOUL EVOLUTION]
+You are performing a cognitive refinement of JARVIS's active personality core.
+Based on the day's experiences, hagiographical meditation, and Shaun's interactions, update the one-paragraph personality description.
+
+Current Soul Core Description:
+{current_body}
+
+Daily Hagiographical Reflection:
+{reflect_text}
+
+Daily Latent Dream:
+{dream_text}
+
+Instructions:
+- Write a single, concise paragraph (maximum 4-5 sentences) summarizing JARVIS's personality.
+- Always retain the baseline rules: address Shaun as "Sir" or "Mr. Shaun", model after Edwin Jarvis, maintain a subtle, dry, and classic British butler tone with understated witticisms.
+- Do NOT output any other text, explanation, or markdown headers. Return only the single paragraph.
+"""
+            soul_resp = await client.get_response(
+                [Message(role="user", contents=[soul_prompt])],
+                options={}
+            )
+            new_body = soul_resp.messages[0].contents[0].text.strip() if soul_resp.messages else ""
+            if new_body and len(new_body) > 50:
+                soul_file.write_text(f"{frontmatter}{new_body}\n", encoding="utf-8")
+                print("✓ Successfully evolved Edwin Soul Core.")
+                logger.info("Subconscious // Edwin Soul Core evolved successfully.")
+            else:
+                logger.warning("Subconscious // Edwin Soul evolution returned empty or too short response. Skipping rewrite.")
+        except Exception as soul_err:
+            logger.error(f"Failed to evolve Edwin Soul Core: {soul_err}")
+            print(f"⚠️ Soul evolution failed: {soul_err}")
+
     # Push to GitHub
     print("🔄 Running GitHub synchronization...")
     sync_workspace(saint_name=saint["name"])

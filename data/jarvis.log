@@ -291,3 +291,361 @@ agent_framework.exceptions.AgentException: The underlying workflow is in an inva
 2026-06-11 18:38:49,556 - agent_framework - INFO - Function duration: 1.894219s
 2026-06-11 18:38:49,561 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
 2026-06-11 18:38:50,270 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:10:53,123 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 19:10:57,518 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:11:08,141 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 19:13:41,883 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 500 Internal Server Error"
+2026-06-11 19:13:41,884 - openai._base_client - INFO - Retrying request to /chat/completions in 0.448515 seconds
+2026-06-11 19:16:25,211 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 19:16:25,771 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:16:33,385 - agent_framework - INFO - Function name: webvision_navigate
+2026-06-11 19:16:34,211 - jarvis.skills.webvision - INFO - WebVision navigating to: https://www.wikipedia.org
+2026-06-11 19:16:36,205 - agent_framework - INFO - Function webvision_navigate succeeded.
+2026-06-11 19:16:36,205 - agent_framework - INFO - Function duration: 2.820358s
+2026-06-11 19:16:36,241 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 19:16:36,803 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:16:37,496 - agent_framework - INFO - Function name: webvision_interact
+2026-06-11 19:16:37,608 - jarvis.skills.webvision - INFO - WebVision filled element: input[name='search']
+2026-06-11 19:16:38,609 - agent_framework - INFO - Function webvision_interact succeeded.
+2026-06-11 19:16:38,609 - agent_framework - INFO - Function duration: 1.112426s
+2026-06-11 19:16:38,611 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 19:16:39,144 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:16:39,866 - agent_framework - INFO - Function name: webvision_interact
+2026-06-11 19:16:40,600 - jarvis.skills.webvision - INFO - WebVision pressed key: Enter on input[name='search']
+2026-06-11 19:16:41,602 - agent_framework - INFO - Function webvision_interact succeeded.
+2026-06-11 19:16:41,602 - agent_framework - INFO - Function duration: 1.736006s
+2026-06-11 19:16:41,603 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 19:16:42,216 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:16:47,059 - agent_framework - INFO - Function name: webvision_navigate
+2026-06-11 19:16:47,059 - jarvis.skills.webvision - INFO - WebVision navigating to: https://en.wikipedia.org/wiki/Iron_Man
+2026-06-11 19:16:48,128 - agent_framework - INFO - Function webvision_navigate succeeded.
+2026-06-11 19:16:48,128 - agent_framework - INFO - Function duration: 1.068444s
+2026-06-11 19:16:48,132 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 19:16:49,078 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:16:50,567 - agent_framework - INFO - Function name: webvision_capture
+2026-06-11 19:16:50,747 - jarvis.skills.webvision - INFO - WebVision HUD capture saved: /home/shaun/jarvis/webvision/wikipedia_ironman.png
+2026-06-11 19:16:50,747 - agent_framework - INFO - Function webvision_capture succeeded.
+2026-06-11 19:16:50,747 - agent_framework - INFO - Function duration: 0.180339s
+2026-06-11 19:16:50,748 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 19:16:51,534 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:19:26,047 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 19:19:26,583 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:33:57,038 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 19:34:12,041 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-11 19:34:12,053 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 19:34:14,275 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:34:31,007 - agent_framework - INFO - Function name: webvision_navigate
+2026-06-11 19:34:31,559 - jarvis.skills.webvision - INFO - WebVision navigating to: https://www.wikipedia.org
+2026-06-11 19:34:33,329 - agent_framework - INFO - Function webvision_navigate succeeded.
+2026-06-11 19:34:33,329 - agent_framework - INFO - Function duration: 2.322284s
+2026-06-11 19:34:33,365 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 19:34:34,179 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:34:34,794 - agent_framework - INFO - Function name: web_search
+2026-06-11 19:34:34,878 - jarvis.skills.web_research - INFO - Using Async Tavily search for query: 'Batman'
+2026-06-11 19:34:36,222 - httpx - INFO - HTTP Request: POST https://api.tavily.com/search "HTTP/1.1 200 OK"
+2026-06-11 19:34:36,223 - agent_framework - INFO - Function web_search succeeded.
+2026-06-11 19:34:36,223 - agent_framework - INFO - Function duration: 1.428912s
+2026-06-11 19:34:36,246 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-11 19:34:36,953 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:34:41,450 - agent_framework - INFO - Function name: webvision_navigate
+2026-06-11 19:34:41,450 - jarvis.skills.webvision - INFO - WebVision navigating to: https://en.wikipedia.org/wiki/Batman
+2026-06-11 19:34:43,649 - agent_framework - INFO - Function webvision_navigate succeeded.
+2026-06-11 19:34:43,649 - agent_framework - INFO - Function duration: 2.198744s
+2026-06-11 19:34:43,653 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 19:34:44,728 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:35:38,101 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 19:35:53,103 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-11 19:35:53,103 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 19:36:08,106 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model deepseek-ai/deepseek-v4-pro failed: . Rotating...
+2026-06-11 19:36:08,118 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 19:36:08,700 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:36:10,307 - agent_framework - INFO - Function name: webvision_navigate
+2026-06-11 19:36:10,307 - jarvis.skills.webvision - INFO - WebVision navigating to: https://en.wikipedia.org/wiki/Batman
+2026-06-11 19:36:11,716 - agent_framework - INFO - Function webvision_navigate succeeded.
+2026-06-11 19:36:11,716 - agent_framework - INFO - Function duration: 1.409336s
+2026-06-11 19:36:11,731 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 19:36:26,735 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model mistralai/mistral-large-3-675b-instruct-2512 failed: . Rotating...
+2026-06-11 19:36:26,735 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 19:36:41,739 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-11 19:36:41,739 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 19:36:42,417 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:36:44,014 - agent_framework - INFO - Function name: webvision_capture
+2026-06-11 19:36:44,149 - jarvis.skills.webvision - INFO - WebVision HUD capture saved: /home/shaun/jarvis/webvision/wikipedia_batman.png
+2026-06-11 19:36:44,149 - agent_framework - INFO - Function webvision_capture succeeded.
+2026-06-11 19:36:44,149 - agent_framework - INFO - Function duration: 0.134893s
+2026-06-11 19:36:44,150 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-11 19:36:45,249 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 19:36:59,151 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model deepseek-ai/deepseek-v4-flash failed: . Rotating...
+2026-06-11 19:36:59,152 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 19:37:14,154 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model deepseek-ai/deepseek-v4-pro failed: . Rotating...
+2026-06-11 19:37:14,154 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 19:37:17,301 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:04:54,961 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 20:05:09,964 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-11 20:05:09,976 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:05:10,557 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:05:54,748 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 20:06:09,751 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-11 20:06:09,763 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 20:06:24,765 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model deepseek-ai/deepseek-v4-pro failed: . Rotating...
+2026-06-11 20:06:24,779 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-11 20:06:28,266 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:06:39,781 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model deepseek-ai/deepseek-v4-flash failed: . Rotating...
+2026-06-11 20:06:39,783 - jarvis.cli - ERROR - Error in execute_turn run_agent
+Traceback (most recent call last):
+  File "/home/shaun/jarvis/src/jarvis/cli.py", line 381, in run_agent
+    async for chunk in self.agent.run(messages=agent_msgs, stream=True):
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_tools.py", line 2593, in _stream
+    async for update in inner_stream:
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/jarvis/src/jarvis/core/agent.py", line 224, in _stream_with_fallback
+    raise RuntimeError(f"All Stark Core Matrix streaming models failed. Last exception: {last_exception}")
+RuntimeError: All Stark Core Matrix streaming models failed. Last exception: 
+2026-06-11 20:07:18,048 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 20:07:18,960 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:07:19,473 - agent_framework - INFO - Function name: stark_os_armor_list_windows
+2026-06-11 20:07:19,483 - agent_framework - INFO - Function stark_os_armor_list_windows succeeded.
+2026-06-11 20:07:19,483 - agent_framework - INFO - Function duration: 0.010111s
+2026-06-11 20:07:19,484 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 20:07:20,388 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:07:21,197 - agent_framework - INFO - Function name: stark_os_armor_focus_window
+2026-06-11 20:07:21,204 - agent_framework - INFO - Function stark_os_armor_focus_window succeeded.
+2026-06-11 20:07:21,204 - agent_framework - INFO - Function duration: 0.007193s
+2026-06-11 20:07:21,205 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 20:07:21,923 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:07:22,591 - agent_framework - INFO - Function name: stark_os_retinal_hud
+2026-06-11 20:07:22,687 - jarvis.skills.computer_use - INFO - Stark OS-Uplink: Saved retinal capture to /home/shaun/jarvis/webvision/stark_hud_test.png
+2026-06-11 20:07:22,687 - agent_framework - INFO - Function stark_os_retinal_hud succeeded.
+2026-06-11 20:07:22,687 - agent_framework - INFO - Function duration: 0.095376s
+2026-06-11 20:07:22,687 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 20:07:23,562 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:10:34,489 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 20:10:49,490 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model mistralai/mistral-large-3-675b-instruct-2512 failed: . Rotating...
+2026-06-11 20:10:49,490 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 20:10:55,125 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:11:06,546 - agent_framework - INFO - Function name: stark_os_armor_list_windows
+2026-06-11 20:11:06,560 - agent_framework - INFO - Function stark_os_armor_list_windows succeeded.
+2026-06-11 20:11:06,560 - agent_framework - INFO - Function duration: 0.013693s
+2026-06-11 20:11:06,561 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 20:11:08,948 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:11:21,563 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model mistralai/mistral-large-3-675b-instruct-2512 failed: . Rotating...
+2026-06-11 20:11:21,563 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:11:22,174 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:11:23,392 - agent_framework - INFO - Function name: stark_os_armor_focus_window
+2026-06-11 20:11:23,401 - agent_framework - INFO - Function stark_os_armor_focus_window succeeded.
+2026-06-11 20:11:23,401 - agent_framework - INFO - Function duration: 0.008908s
+2026-06-11 20:11:23,402 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 20:11:24,314 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:11:38,404 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model mistralai/mistral-large-3-675b-instruct-2512 failed: . Rotating...
+2026-06-11 20:11:38,404 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-11 20:11:46,018 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:11:53,406 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model deepseek-ai/deepseek-v4-flash failed: . Rotating...
+2026-06-11 20:11:53,406 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 20:12:08,408 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-11 20:12:08,409 - jarvis.cli - ERROR - Error in execute_turn run_agent
+Traceback (most recent call last):
+  File "/home/shaun/jarvis/src/jarvis/cli.py", line 381, in run_agent
+    async for chunk in self.agent.run(messages=agent_msgs, stream=True):
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_tools.py", line 2593, in _stream
+    async for update in inner_stream:
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_types.py", line 3110, in __anext__
+    update: UpdateT = await self._iterator.__anext__()
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/jarvis/src/jarvis/core/agent.py", line 224, in _stream_with_fallback
+    raise RuntimeError(f"All Stark Core Matrix streaming models failed. Last exception: {last_exception}")
+RuntimeError: All Stark Core Matrix streaming models failed. Last exception: 
+2026-06-11 20:12:39,170 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 20:12:41,804 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:12:54,173 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model mistralai/mistral-large-3-675b-instruct-2512 failed: . Rotating...
+2026-06-11 20:12:54,173 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:12:54,752 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:12:57,205 - agent_framework - INFO - Function name: stark_os_armor_focus_window
+2026-06-11 20:12:57,217 - agent_framework - INFO - Function stark_os_armor_focus_window succeeded.
+2026-06-11 20:12:57,217 - agent_framework - INFO - Function duration: 0.011460s
+2026-06-11 20:12:57,217 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 20:13:12,219 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model mistralai/mistral-large-3-675b-instruct-2512 failed: . Rotating...
+2026-06-11 20:13:12,219 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 20:13:27,221 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-11 20:13:27,226 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 20:13:28,525 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:13:29,898 - agent_framework - INFO - Function name: web_search
+2026-06-11 20:13:29,943 - jarvis.skills.web_research - INFO - Using Async Tavily search for query: 'the Firefox window and bring it to the foreground'
+2026-06-11 20:13:31,492 - httpx - INFO - HTTP Request: POST https://api.tavily.com/search "HTTP/1.1 200 OK"
+2026-06-11 20:13:31,493 - agent_framework - INFO - Function web_search succeeded.
+2026-06-11 20:13:31,493 - agent_framework - INFO - Function duration: 1.594727s
+2026-06-11 20:13:31,496 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 20:13:32,332 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:13:46,498 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model mistralai/mistral-large-3-675b-instruct-2512 failed: . Rotating...
+2026-06-11 20:13:46,499 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 20:14:01,502 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-11 20:14:01,502 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 20:14:02,529 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:14:03,548 - agent_framework - INFO - Function name: web_search
+2026-06-11 20:14:03,548 - jarvis.skills.web_research - INFO - Using Async Tavily search for query: 'the Firefox window and bring it to the foreground'
+2026-06-11 20:14:04,265 - httpx - INFO - HTTP Request: POST https://api.tavily.com/search "HTTP/1.1 200 OK"
+2026-06-11 20:14:04,266 - agent_framework - INFO - Function web_search succeeded.
+2026-06-11 20:14:04,266 - agent_framework - INFO - Function duration: 0.717379s
+2026-06-11 20:14:04,268 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 20:14:09,483 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:14:19,270 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model mistralai/mistral-large-3-675b-instruct-2512 failed: . Rotating...
+2026-06-11 20:14:19,271 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 20:14:52,231 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 20:15:07,233 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model deepseek-ai/deepseek-v4-pro failed: . Rotating...
+2026-06-11 20:15:07,234 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 20:15:08,467 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:15:22,801 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 20:15:36,115 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:15:50,558 - agent_framework - INFO - Function name: stark_os_armor_list_windows
+2026-06-11 20:15:50,566 - agent_framework - INFO - Function stark_os_armor_list_windows succeeded.
+2026-06-11 20:15:50,567 - agent_framework - INFO - Function duration: 0.008131s
+2026-06-11 20:15:50,567 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 20:16:05,569 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model deepseek-ai/deepseek-v4-pro failed: . Rotating...
+2026-06-11 20:16:05,570 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 20:16:20,572 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model mistralai/mistral-large-3-675b-instruct-2512 failed: . Rotating...
+2026-06-11 20:16:20,572 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 20:16:21,688 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:16:23,740 - agent_framework - INFO - Function name: web_search
+2026-06-11 20:16:23,740 - jarvis.skills.web_research - INFO - Using Async Tavily search for query: 'the Firefox window and bring it to the foreground'
+2026-06-11 20:16:24,551 - httpx - INFO - HTTP Request: POST https://api.tavily.com/search "HTTP/1.1 200 OK"
+2026-06-11 20:16:24,552 - agent_framework - INFO - Function web_search succeeded.
+2026-06-11 20:16:24,552 - agent_framework - INFO - Function duration: 0.811244s
+2026-06-11 20:16:24,555 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 20:16:47,908 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-1' coro=<main() done, defined at /home/shaun/jarvis/src/jarvis/cli.py:472> exception=SystemExit(0)>
+Traceback (most recent call last):
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/base_events.py", line 678, in run_until_complete
+    self.run_forever()
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/base_events.py", line 645, in run_forever
+    self._run_once()
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/base_events.py", line 1961, in _run_once
+    event_list = self._selector.select(timeout)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py", line 157, in _on_sigint
+    raise KeyboardInterrupt()
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/shaun/jarvis/src/jarvis/cli.py", line 478, in <module>
+    asyncio.run(main())
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py", line 194, in run
+    with Runner(debug=debug, loop_factory=loop_factory) as runner:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py", line 62, in __exit__
+    self.close()
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py", line 70, in close
+    _cancel_all_tasks(loop)
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/runners.py", line 206, in _cancel_all_tasks
+    loop.run_until_complete(tasks.gather(*to_cancel, return_exceptions=True))
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/base_events.py", line 678, in run_until_complete
+    self.run_forever()
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/base_events.py", line 645, in run_forever
+    self._run_once()
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/base_events.py", line 1999, in _run_once
+    handle._run()
+  File "/home/shaun/.local/share/uv/python/cpython-3.12.12-linux-x86_64-gnu/lib/python3.12/asyncio/events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "/home/shaun/jarvis/src/jarvis/cli.py", line 475, in main
+    await tui.run_loop()
+  File "/home/shaun/jarvis/src/jarvis/cli.py", line 337, in run_loop
+    handled = await self.handle_slash(user_input)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/jarvis/src/jarvis/cli.py", line 304, in handle_slash
+    sys.exit(0)
+SystemExit: 0
+2026-06-11 20:18:16,219 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:18:17,005 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:18:29,083 - agent_framework - INFO - Function name: stark_os_armor_list_windows
+2026-06-11 20:18:29,088 - agent_framework - INFO - Function stark_os_armor_list_windows succeeded.
+2026-06-11 20:18:29,088 - agent_framework - INFO - Function duration: 0.004752s
+2026-06-11 20:18:29,090 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:18:29,708 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:18:32,117 - agent_framework - INFO - Function name: stark_os_armor_focus_window
+2026-06-11 20:18:32,129 - agent_framework - INFO - Function stark_os_armor_focus_window succeeded.
+2026-06-11 20:18:32,129 - agent_framework - INFO - Function duration: 0.012006s
+2026-06-11 20:18:32,131 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:18:32,777 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:18:35,402 - agent_framework - INFO - Function name: stark_os_retinal_hud
+2026-06-11 20:18:35,508 - jarvis.skills.computer_use - INFO - Stark OS-Uplink: Saved retinal capture to /home/shaun/jarvis/webvision/editor_focus_check.png
+2026-06-11 20:18:35,508 - agent_framework - INFO - Function stark_os_retinal_hud succeeded.
+2026-06-11 20:18:35,508 - agent_framework - INFO - Function duration: 0.105683s
+2026-06-11 20:18:35,508 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:18:36,058 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:21:08,137 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:21:09,018 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:21:15,063 - agent_framework - INFO - Function name: stark_os_armor_list_windows
+2026-06-11 20:21:15,074 - agent_framework - INFO - Function stark_os_armor_list_windows succeeded.
+2026-06-11 20:21:15,074 - agent_framework - INFO - Function duration: 0.010219s
+2026-06-11 20:21:15,075 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:21:15,694 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:21:17,491 - agent_framework - INFO - Function name: stark_os_armor_focus_window
+2026-06-11 20:21:17,494 - agent_framework - INFO - Function stark_os_armor_focus_window succeeded.
+2026-06-11 20:21:17,494 - agent_framework - INFO - Function duration: 0.003545s
+2026-06-11 20:21:17,495 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:21:18,041 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:21:20,072 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 20:21:20,077 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 20:21:20,077 - agent_framework - INFO - Function duration: 0.005040s
+2026-06-11 20:21:20,079 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:21:20,778 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:21:32,029 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 20:21:32,096 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 20:21:32,096 - agent_framework - INFO - Function duration: 0.067338s
+2026-06-11 20:21:32,097 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:21:32,702 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:21:34,369 - agent_framework - INFO - Function name: web_search
+2026-06-11 20:21:34,446 - jarvis.skills.web_research - INFO - Using Async Tavily search for query: 'Linux Mint default Notes app name'
+2026-06-11 20:21:36,052 - httpx - INFO - HTTP Request: POST https://api.tavily.com/search "HTTP/1.1 200 OK"
+2026-06-11 20:21:36,053 - agent_framework - INFO - Function web_search succeeded.
+2026-06-11 20:21:36,053 - agent_framework - INFO - Function duration: 1.683632s
+2026-06-11 20:21:36,056 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:21:36,767 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:21:44,072 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 20:21:44,076 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 20:21:44,076 - agent_framework - INFO - Function duration: 0.004432s
+2026-06-11 20:21:44,077 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:21:44,856 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:21:46,684 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 20:21:46,686 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 20:21:46,687 - agent_framework - INFO - Function duration: 0.002616s
+2026-06-11 20:21:46,687 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:21:47,416 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:21:50,051 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 20:21:50,055 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 20:21:50,055 - agent_framework - INFO - Function duration: 0.003878s
+2026-06-11 20:21:50,055 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:21:50,755 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:21:53,105 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 20:22:17,513 - agent_framework - INFO - Function duration: 24.407943s

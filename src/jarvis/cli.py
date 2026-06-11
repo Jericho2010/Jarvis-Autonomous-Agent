@@ -185,9 +185,27 @@ class JarvisTUI:
         # Register forge_skill tool
         self.all_tools = [forge_skill] + skills_tools
         
-        # Inject user profile into system instructions
+        # Inject user profile and dynamic Edwin soul into system instructions
         profile = await self.memory.build_profile_prompt()
-        self.custom_instructions = f"{DEFAULT_SYSTEM_PROMPT}\n\n{profile}"
+        
+        soul_body = ""
+        soul_file = Path("/home/shaun/jarvis/skills/jarvis_soul/SKILL.md")
+        if soul_file.exists():
+            try:
+                content = soul_file.read_text(encoding="utf-8")
+                if content.startswith("---"):
+                    parts = content.split("---", 2)
+                    if len(parts) >= 3:
+                        soul_body = parts[2].strip()
+                else:
+                    soul_body = content.strip()
+            except Exception as soul_err:
+                logger.error(f"Failed to parse Edwin soul instructions: {soul_err}")
+                
+        self.custom_instructions = f"{DEFAULT_SYSTEM_PROMPT}"
+        if soul_body:
+            self.custom_instructions += f"\n\n# ACTIVE PERSONA PROFILE\n{soul_body}"
+        self.custom_instructions += f"\n\n{profile}"
         
         self.agent = create_jarvis_agent(
             api_key=self.api_key or "",

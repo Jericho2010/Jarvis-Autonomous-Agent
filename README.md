@@ -122,6 +122,8 @@ Inside the CLI, you can type slash commands:
 - **2026-06-11** - WebVision Browser Automation - Integrated Playwright Chromium automation (`webvision_navigate`, `webvision_interact`, `webvision_capture`, `webvision_close`) under `Optical Uplink: WebVision` skill; configured local workspace folder `webvision/` for UI screenshot captures and added it to .gitignore; verified 10/10 test passing rate.
 - **2026-06-11** - Stark Core Matrix Failure Toleration - Integrated `max_retries=0` client instantiations and asynchronous mid-stream chunk timeouts (15.0 seconds) to prevent visual freezes during Nvidia NIM oversubscription; confirmed 10/10 test suite execution.
 - **2026-06-11** - Stark OS-Uplink Skill Implementation - Created `skills/computer_use.py` containing retinal HUD scans, kinetic keyboard/mouse actuate linkage, and App Armor active window management via scrot, xdotool, and wmctrl; verified 18/18 test suite execution.
+- **2026-06-11** - Evolving Soul Core Implementation - Modeled the Edwin British butler persona as a native MAF skill (`skills/jarvis_soul/SKILL.md`); updated TUI startup in `src/jarvis/cli.py` to parse and dynamically inject the soul core; aligned nightly subconscious reflections (`src/evolution/subconscious.py`) to run on `StarkNIMChatClient` in `house_party` mode (completely LLaMA-free) and evolve the soul core body paragraph.
+
 
 
 

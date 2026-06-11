@@ -181,3 +181,72 @@
 
 # 2026-06-11 18:39:44.950330
 +/exit
+
+# 2026-06-11 19:10:53.030825
++Hello Jarvis
+
+# 2026-06-11 19:11:08.119436
++Navigate to wikipedia.org, search for 'Iron Man', take a screenshot named 'wikipedia_ironman.png', and summarize the introduction.
+
+# 2026-06-11 19:16:04.879152
++/model
+
+# 2026-06-11 19:16:19.625555
++/model 5
+
+# 2026-06-11 19:16:25.193959
++Navigate to wikipedia.org, search for 'Iron Man', take a screenshot named 'wikipedia_ironman.png', and summarize the introduction.
+
+# 2026-06-11 19:19:26.031373
++Well done Jarvis
+
+# 2026-06-11 19:19:57.310579
++/model
+
+# 2026-06-11 19:20:17.999170
++/model H
+
+# 2026-06-11 19:33:56.947403
++Navigate to wikipedia.org, search for 'Batman', take a screenshot named 'wikipedia_batman.png', and summarize the introduction.
+
+# 2026-06-11 19:38:32.579193
++/exit
+
+# 2026-06-11 20:04:54.910754
++Hi Jarvis, big man
+
+# 2026-06-11 20:05:54.735210
++List active windows, bring Firefox (or your terminal/editor) to the foreground, and capture a retinal HUD screenshot named 'stark_hud_test.png'.
+
+# 2026-06-11 20:07:02.230787
++/model
+
+# 2026-06-11 20:07:14.811018
++/model 6
+
+# 2026-06-11 20:07:18.028701
++List active windows, bring Firefox (or your terminal/editor) to the foreground, and capture a retinal HUD screenshot named 'stark_hud_test.png'.
+
+# 2026-06-11 20:10:34.472829
++Find the Firefox window and bring it to the foreground. Press 'ctrl+t' to open a new tab, type 'https://news.ycombinator.com' and press Enter. Wait 10 seconds for the page to load, take a retinal HUD capture named 'hn_recon.png', then bring this terminal window back to the foreground
+
+# 2026-06-11 20:14:44.420188
++/model 1
+
+# 2026-06-11 20:14:52.216879
++Find the Firefox window and bring it to the foreground. Press 'ctrl+t' to open a new tab, type 'https://news.ycombinator.com' and press Enter. Wait 10 seconds for the page to load, take a retinal HUD capture named 'hn_recon.png', then bring this terminal window back to the foreground
+
+# 2026-06-11 20:16:47.851337
++/exit
+
+# 2026-06-11 20:17:59.337398
++/model
+
+# 2026-06-11 20:18:07.484575
++/model 5
+
+# 2026-06-11 20:18:16.163592
++Find my text editor window and focus it. Click near the center of the window to focus the text area, type 'Hello Shaun, this is JARVIS'
+
+# 2026-06-11 20:21:08.123525
++Please find and open the Notes app
