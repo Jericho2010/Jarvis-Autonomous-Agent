@@ -113,17 +113,32 @@ Inside the CLI, you can type slash commands:
 
 ## 4. Architectural Deep-Dive: MAF & Hermes Evolution
 
+> For the full technical reference, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
 ### Microsoft Agent Framework (MAF) Orchestration
-JARVIS is built as a native agent on top of the Microsoft Agent Framework, using a decoupled, event-driven context pipeline:
-*   **StarkNIMChatClient**: Extends `BaseChatClient` and mixes in `FunctionInvocationLayer` to support tool calling. Instead of simple wrapper invocations, it overrides response streaming to coordinate the **Stark Core Matrix** dynamic routing. It enforces `max_retries=0` and wraps header/chunk fetches in an asynchronous 15-second timeout, falling back automatically to alternate endpoints when oversubscriptions occur.
-*   **ToolTelemetryMiddleware**: A custom `FunctionMiddleware` that intercepts tool invocations, formats inputs/outputs in Stark colors (hot rod red and gold diagnostics), and manages the TUI's Rich Live display context to prevent visual duplicates.
-*   **SkillsProvider**: Utilizes the native MAF skills provider structure to scan and register python skill modules (`skills/*.py`) and YAML-packaged Markdown skills.
+JARVIS is a native agent built on MAF, using a decoupled, event-driven context pipeline:
+*   **StarkNIMChatClient**: Custom `BaseChatClient` driving the **Stark Core Matrix** multi-model failover engine. Enforces `max_retries=0` and a 15-second async chunk timeout, rotating automatically through the non-LLaMA NIM basket on failure.
+*   **ToolTelemetryMiddleware**: Custom `FunctionMiddleware` rendering Stark-themed gold diagnostic panels in the TUI for every tool invocation. Manages the Rich Live display context to prevent visual duplication.
+*   **SkillsProvider**: Discovers and registers Python skill modules (`skills/*.py`) and YAML-packaged Markdown skills at startup.
+
+### Active Skill Roster
+
+| Skill | Codename | Description |
+| :--- | :--- | :--- |
+| `skills/computer_use.py` | Stark OS-Uplink | Desktop HUD capture, keyboard/mouse actuation, window management |
+| `skills/web_research.py` | Neural Uplink | Tavily/Firecrawl/DuckDuckGo web search and page extraction |
+| `skills/webvision.py` | Optical Uplink | Playwright Chromium browser automation |
+| `skills/code_analyzer.py` | Code Matrix | Static analysis and code review helpers |
+| `skills/creative_solver.py` | Lateral Core | Brainstorming and creative ideation |
+| `skills/file_ops.py` | File Access | Filesystem read/write operations |
+| `skills/system_shell.py` | Bash Uplink | Host shell command execution |
+| `skills/jarvis_soul/SKILL.md` | Edwin Soul Core | Evolving British butler personality profile |
 
 ### Hermes Self-Evolution Core
-The self-evolution engine implements the **Hermes Directive**—allowing the agent's behaviors and personality to modify and author themselves dynamically based on daily operation:
-*   **The Soul Core Skill (`skills/jarvis_soul/SKILL.md`)**: The butler persona (Edwin Jarvis) is packaged as a native MAF skill with standard frontmatter. At startup, the TUI parses the `SKILL.md` file and dynamically injects the body instructions into the active agent's system prompt instructions.
-*   **Subconscious Engine (`src/evolution/subconscious.py`)**: Runs daily at 3:00 AM. It retrieves the last 24 hours of message transactions, logs, and tool outcomes from the SQLite database. It compiles these facts, runs a high-temperature dream state to identify behavioral patterns, and generates updates.
-*   **Self-Authorship Rewrite**: Using the `StarkNIMChatClient` in `house_party` mode (completely LLaMA-free), the engine updates the body paragraph of `/skills/jarvis_soul/SKILL.md`. On the next boot, the TUI loads these updated guidelines, enabling the personality and sarcasm levels to adapt organically over time.
+The **Hermes Directive** allows JARVIS's personality and skills to self-author based on daily operation:
+*   **Soul Core** (`skills/jarvis_soul/SKILL.md`): Edwin butler persona packaged as a native MAF skill. Parsed and injected into system instructions at every TUI startup.
+*   **Subconscious Engine** (`src/evolution/subconscious.py`): Runs at 3:00 AM via cron. Executes 7 phases — Pray → Gather → Dream → Reflect → Evolve Soul → Forge Skills → Sync.
+*   **Self-Authorship**: Uses `StarkNIMChatClient` in `house_party` mode (LLaMA-free) to rewrite the SKILL.md personality body nightly, with full Git version history preserved.
 
 ---
 
@@ -140,6 +155,7 @@ The self-evolution engine implements the **Hermes Directive**—allowing the age
 - **2026-06-11** - Stark Core Matrix Failure Toleration - Integrated `max_retries=0` client instantiations and asynchronous mid-stream chunk timeouts (15.0 seconds) to prevent visual freezes during Nvidia NIM oversubscription; confirmed 10/10 test suite execution.
 - **2026-06-11** - Stark OS-Uplink Skill Implementation - Created `skills/computer_use.py` containing retinal HUD scans, kinetic keyboard/mouse actuate linkage, and App Armor active window management via scrot, xdotool, and wmctrl; verified 18/18 test suite execution.
 - **2026-06-11** - Evolving Soul Core Implementation - Modeled the Edwin British butler persona as a native MAF skill (`skills/jarvis_soul/SKILL.md`); updated TUI startup in `src/jarvis/cli.py` to parse and dynamically inject the soul core; aligned nightly subconscious reflections (`src/evolution/subconscious.py`) to run on `StarkNIMChatClient` in `house_party` mode (completely LLaMA-free) and evolve the soul core body paragraph.
+- **2026-06-11** - Documentation — Created `ARCHITECTURE.md` with full deep-dive covering MAF context pipeline, Stark Core Matrix failover, Skills system, SQLite Memory Engine (FTS5), Edwin Soul Core injection, Hermes 7-phase evolution protocol, Stark OS-Uplink tool table, and WebVision Optical Uplink; updated `README.md` with skill roster table and link to architecture doc.
 
 
 
