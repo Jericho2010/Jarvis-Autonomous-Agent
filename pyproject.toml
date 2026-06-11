@@ -17,6 +17,7 @@ dependencies = [
     "ddgs>=9.14.4",
     "tavily-python>=0.7.26",
     "firecrawl-py>=4.28.2",
+    "playwright>=1.40.0",
 ]
 
 [tool.uv]
