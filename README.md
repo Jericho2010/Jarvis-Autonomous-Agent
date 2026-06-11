@@ -1,4 +1,13 @@
-# Jarvis — The AI Co-Builder & Companion
+# J.A.R.V.I.S — MARK XLVII COGNITIVE REPL
+```text
+      _   _   ___ __   __ ___  ___ 
+   _ | | /_\ | _ \ \ \ / /|_ _|/ __|
+  | || |/ _ \|   / \ V /  | | \__ \
+   \__//_/ \_\_|_\  \_/  |___||___/
+   
+        MARK XLVII — SYSTEM COGNITIVE INTERFACE
+  "Just Another Rather Very Intelligent System"
+```
 
 Jarvis is a unified, lightweight Linux agent designed for real-time pair-programming, system automation, and subconscious capability development. It combines:
 1. **Microsoft Agent Framework** for core agent-loop orchestration and tools routing.
@@ -6,7 +15,64 @@ Jarvis is a unified, lightweight Linux agent designed for real-time pair-program
 3. **SQLite FTS5 Memory Engine** for message indexing and facts.
 4. **Nightly Subconscious Evolution (Dream/Pray/Reflect)** for self-improvement and autonomous skill-writing.
 
-## Getting Started
+---
+
+## 1. System Architecture
+
+Jarvis routes message flows asynchronously through a multi-layered middleware architecture, ensuring thread-safe UI rendering and automatic LLM fallback failover.
+
+```mermaid
+graph TD
+    User([Shaun]) <-->|Alt+Enter multiline REPL| TUI[Jarvis TUI: prompt-toolkit]
+    TUI <-->|Reset Turn Buffer| LiveStream[Rich Live Stream Context]
+    
+    subgraph Stark Core Engine
+        Agent[JARVIS Core Agent] <-->|Telemetry Middleware| Matrix[Stark Core Matrix Client]
+        Matrix -->|Primary Model / Rotation| NIM[NVIDIA NIM endpoints]
+        NIM -.->|Fallback Failover| DeepSeek[DeepSeek V4]
+        NIM -.->|Fallback Failover| Kimi[Kimi K2.6]
+        NIM -.->|Fallback Failover| Mistral[Mistral Large 3]
+    end
+
+    subgraph Memory & Context
+        Agent <-->|FTS5 Search & Facts| SQLite[(SQLite Memory DB)]
+        Agent <-->|Cron & Event Loop| Subconscious[Subconscious Engine]
+    end
+
+    subgraph Skills & Capabilities
+        Agent -->|execute_bash| Bash[Host Shell]
+        Agent -->|web_search / web_extract| WebGrounding[Web Research Skill]
+    end
+```
+
+---
+
+## 2. Web Grounding Protocol
+
+The Web Research module utilizes a dual-engine decision tree, leveraging premium integrations while falling back gracefully to keyless local tools to maintain availability.
+
+```mermaid
+graph TD
+    Query[Web Query] --> SearchTool{web_search}
+    SearchTool -->|TAVILY_API_KEY set?| Tavily[Tavily Search API]
+    SearchTool -->|No Key / Error| DDG[DuckDuckGo Scrape]
+    
+    URL[Target URL] --> ExtractTool{web_extract}
+    ExtractTool -->|FIRECRAWL_API_KEY set?| Firecrawl[Firecrawl Scraper]
+    ExtractTool -->|No Key / Error| LocalScrape[Local HTTP Scraper]
+    
+    LocalScrape -->|httpx| GetHTML[Fetch HTML]
+    GetHTML -->|lxml.html| CleanHTML[Strip scripts/styles/nav/headers/footers]
+    
+    Tavily --> Output[Normalized JSON Search Hits]
+    DDG --> Output
+    Firecrawl --> OutputMarkdown[Clean Page Markdown]
+    CleanHTML --> OutputMarkdown
+```
+
+---
+
+## 3. Getting Started
 
 ### Prerequisites
 - Python 3.10+
@@ -19,26 +85,37 @@ chmod +x setup.sh run.sh
 ./setup.sh
 ```
 
-Ensure you populate your `.env` file with the correct NVIDIA NIM credentials:
+Ensure you populate your `.env` file with your credentials:
 ```env
 NVIDIA_API_KEY=nvapi-...
 GITHUB_PERSONAL_ACCESS_TOKEN=your_token
+
+# Optional Web Research APIs
+TAVILY_API_KEY=tvly-...
+FIRECRAWL_API_KEY=fc-...
 ```
 
 ### Running the TUI
-Start the session REPL:
+Start the REPL session:
 ```bash
 ./run.sh
 ```
 
 Inside the CLI, you can type slash commands:
-- `/help` — List available slash commands.
+- `/help` — Show the command manual.
 - `/skills` — Show hot-loaded skill modules.
+- `/model` — Configure the primary model or Stark Core Matrix routing.
 - `/clear` — Clear the screen.
+- `/tasks` — Show current engineering task backlog.
 - `/new` — Start a fresh dialogue session.
 
 ---
 
-## Build Log
+## 4. Build Log
 
 - **2026-06-08** - Initial Scaffolding - Created pyproject.toml, .env.example, setup.sh, run.sh, and README.md.
+- **2026-06-10** - Agent Stability Fixes - Replaced `WorkflowAgent` with raw `Agent` to prevent Ctrl+C state corruption; fixed LLM prefill streaming timeout; restored `FunctionInvocationLayer` mixin to client to enable Trinity tool-calling loop.
+- **2026-06-11** - Visual Refactoring & NIM Catalog Update - Corrected ASCII art spelling (JARVSS -> JARVIS); added unicode Arc Reactor and diagnostics panel to splash screen; formatted raw MAF `Content` tool output list structures to human-readable strings; updated TUI to hot rod red (#E63946) and gold (#FFD700) Stark/Iron Man colors, and formatted tool parameters in non-highlighted gold bullet lines (eliminating all hard-to-read green text in arguments); fixed mid-run TUI visual duplication by halting and resetting Rich Live streaming context between tool executions; cleaned up the retired Qwen3 model from NIM rotation catalog.
+- **2026-06-11** - Stark Nomenclature Migration - Transitioned routing and fallback terminology from "dynamic/Trinity" to Stark/Iron Man theme: "Stark Core Matrix" as the model basket config, "Neural Uplink: Dynamic Matrix" as the active routing mode, and "house_party" (Dynamic Multi-Model Protocol) as the default fallback mode.
+- **2026-06-11** - Web Research Skill & Integrations - Integrated Tavily Search and Firecrawl API with custom fallback logic using DuckDuckGo (`ddgs`) and local `httpx` + `lxml` parsing; added keys to `.env` config, updated pyproject.toml dependencies, and verified skill auto-registration and unit test coverage.
+- **2026-06-11** - Asynchronous Web Research & UI - Converted Web Research skill tools (`web_search`, `web_extract`) to fully async coroutines using cached client instances to avoid connection leaks; added thread isolation for synchronous fallbacks like DuckDuckGo to prevent event loop blockages; integrated a Stark-themed neural uplink loading line in `ToolTelemetryMiddleware` for web-grounding operations.

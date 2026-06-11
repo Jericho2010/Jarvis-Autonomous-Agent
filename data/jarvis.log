@@ -147,3 +147,147 @@ agent_framework.exceptions.AgentException: The underlying workflow is in an inva
 2026-06-10 23:16:29,154 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
 2026-06-10 23:36:23,388 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
 2026-06-10 23:36:29,869 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 16:50:35,262 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: qwen/qwen3-coder-480b-a35b-instruct
+2026-06-11 16:50:36,323 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 410 Gone"
+2026-06-11 16:50:36,327 - jarvis.agent - WARNING - Trinity Council // Streaming model qwen/qwen3-coder-480b-a35b-instruct failed: ('<class \'agent_framework_openai._chat_completion_client.OpenAIChatCompletionClient\'> service failed to complete the prompt: Error code: 410 - {\'type\': \'about:blank\', \'title\': \'Gone\', \'status\': 410, \'detail\': "The model \'qwen/qwen3-coder-480b-a35b-instruct\' has reached its end of life on 2026-06-11T00:00:00Z and is no longer available."}', APIStatusError('Error code: 410 - {\'type\': \'about:blank\', \'title\': \'Gone\', \'status\': 410, \'detail\': "The model \'qwen/qwen3-coder-480b-a35b-instruct\' has reached its end of life on 2026-06-11T00:00:00Z and is no longer available."}')). Rotating...
+2026-06-11 16:50:36,342 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 16:50:36,967 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 16:50:54,746 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 16:50:56,393 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 16:52:04,577 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 16:52:05,230 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 16:52:05,821 - agent_framework - INFO - Function name: write_file_content
+2026-06-11 16:52:05,824 - agent_framework - INFO - Function write_file_content succeeded.
+2026-06-11 16:52:05,824 - agent_framework - INFO - Function duration: 0.001880s
+2026-06-11 16:52:05,845 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 16:52:09,099 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 16:52:23,080 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 16:52:23,111 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 16:52:23,111 - agent_framework - INFO - Function duration: 0.030596s
+2026-06-11 16:52:23,112 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: qwen/qwen3-coder-480b-a35b-instruct
+2026-06-11 16:52:23,639 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 410 Gone"
+2026-06-11 16:52:23,640 - jarvis.agent - WARNING - Trinity Council // Streaming model qwen/qwen3-coder-480b-a35b-instruct failed: ('<class \'agent_framework_openai._chat_completion_client.OpenAIChatCompletionClient\'> service failed to complete the prompt: Error code: 410 - {\'type\': \'about:blank\', \'title\': \'Gone\', \'status\': 410, \'detail\': "The model \'qwen/qwen3-coder-480b-a35b-instruct\' has reached its end of life on 2026-06-11T00:00:00Z and is no longer available."}', APIStatusError('Error code: 410 - {\'type\': \'about:blank\', \'title\': \'Gone\', \'status\': 410, \'detail\': "The model \'qwen/qwen3-coder-480b-a35b-instruct\' has reached its end of life on 2026-06-11T00:00:00Z and is no longer available."}')). Rotating...
+2026-06-11 16:52:23,655 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-11 16:52:25,892 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:09:40,471 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-11 17:09:41,643 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:09:58,620 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 17:09:59,293 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:10:00,368 - agent_framework - INFO - Function name: write_file_content
+2026-06-11 17:10:00,371 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 17:10:00,374 - agent_framework - INFO - Function write_file_content succeeded.
+2026-06-11 17:10:00,374 - agent_framework - INFO - Function duration: 0.005885s
+2026-06-11 17:10:00,409 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 17:10:00,409 - agent_framework - INFO - Function duration: 0.037106s
+2026-06-11 17:10:00,426 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 17:10:01,002 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:10:02,054 - agent_framework - INFO - Function name: write_file_content
+2026-06-11 17:10:02,056 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 17:10:02,057 - agent_framework - INFO - Function write_file_content succeeded.
+2026-06-11 17:10:02,057 - agent_framework - INFO - Function duration: 0.003218s
+2026-06-11 17:10:02,086 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 17:10:02,086 - agent_framework - INFO - Function duration: 0.029905s
+2026-06-11 17:10:02,101 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 17:10:02,838 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:15:55,816 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-11 17:16:28,475 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:17:09,056 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 17:17:09,946 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:17:18,449 - agent_framework - INFO - Function name: write_file_content
+2026-06-11 17:17:18,451 - agent_framework - INFO - Function write_file_content succeeded.
+2026-06-11 17:17:18,451 - agent_framework - INFO - Function duration: 0.001431s
+2026-06-11 17:17:18,466 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 17:17:19,060 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:17:19,479 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 17:17:19,512 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 17:17:19,512 - agent_framework - INFO - Function duration: 0.033325s
+2026-06-11 17:17:19,514 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-11 17:17:28,685 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:18:00,956 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 17:18:02,067 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:18:39,669 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 17:18:40,263 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:18:42,980 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 17:18:42,987 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 17:18:42,987 - agent_framework - INFO - Function duration: 0.005849s
+2026-06-11 17:18:42,988 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-11 17:18:56,135 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:19:50,013 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 17:19:54,401 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:31:44,040 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 17:31:51,724 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:32:08,693 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 17:32:10,869 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:34:53,191 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 17:34:53,999 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:34:54,718 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 17:34:54,722 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 17:34:54,722 - agent_framework - INFO - Function duration: 0.004292s
+2026-06-11 17:34:54,737 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 17:34:55,535 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:36:16,905 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 17:36:17,765 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:36:28,940 - agent_framework - INFO - Function name: forge_skill
+2026-06-11 17:36:29,233 - agent_framework - INFO - Function forge_skill succeeded.
+2026-06-11 17:36:29,233 - agent_framework - INFO - Function duration: 0.292745s
+2026-06-11 17:36:29,234 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 17:36:48,384 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:36:54,099 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 17:36:54,126 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 17:36:54,126 - agent_framework - INFO - Function duration: 0.026580s
+2026-06-11 17:36:54,128 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 17:37:01,393 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:38:31,458 - agent_framework - INFO - Function name: write_file_content
+2026-06-11 17:38:31,460 - agent_framework - INFO - Function write_file_content succeeded.
+2026-06-11 17:38:31,460 - agent_framework - INFO - Function duration: 0.001081s
+2026-06-11 17:38:31,462 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 17:38:32,326 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:38:33,043 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 17:38:35,574 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 17:38:35,574 - agent_framework - INFO - Function duration: 2.530889s
+2026-06-11 17:38:35,577 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 17:38:37,443 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:40:45,938 - agent_framework - INFO - Function name: write_file_content
+2026-06-11 17:40:45,939 - agent_framework - INFO - Function write_file_content succeeded.
+2026-06-11 17:40:45,939 - agent_framework - INFO - Function duration: 0.001193s
+2026-06-11 17:40:45,940 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 17:40:56,403 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:41:01,115 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 17:41:01,727 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 17:41:01,727 - agent_framework - INFO - Function duration: 0.612498s
+2026-06-11 17:41:01,729 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 17:41:05,927 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:42:10,242 - agent_framework - INFO - Function name: write_file_content
+2026-06-11 17:42:10,243 - agent_framework - INFO - Function write_file_content succeeded.
+2026-06-11 17:42:10,243 - agent_framework - INFO - Function duration: 0.001394s
+2026-06-11 17:42:10,245 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 17:42:11,362 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:42:12,287 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 17:42:12,288 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 17:42:12,294 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 17:42:12,294 - agent_framework - INFO - Function duration: 0.005125s
+2026-06-11 17:42:12,316 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 17:42:12,317 - agent_framework - INFO - Function duration: 0.029470s
+2026-06-11 17:42:12,332 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 17:42:13,102 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:42:15,857 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 17:42:16,083 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 17:42:16,083 - agent_framework - INFO - Function duration: 0.226179s
+2026-06-11 17:42:16,086 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 17:42:17,301 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 17:42:46,108 - jarvis.agent - INFO - Trinity Council // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-11 17:43:31,235 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 18:35:49,331 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 18:36:17,022 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 18:37:57,089 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 18:38:31,373 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 18:38:47,662 - agent_framework - INFO - Function name: web_search
+2026-06-11 18:38:47,664 - agent_framework - INFO - Function name: web_search
+2026-06-11 18:38:47,867 - jarvis.skills.web_research - INFO - Using Tavily search for query: 'top interesting stories World Cup football 2026'
+2026-06-11 18:38:47,867 - jarvis.skills.web_research - INFO - Using Tavily search for query: 'most compelling World Cup football stories this week'
+2026-06-11 18:38:49,500 - agent_framework - INFO - Function web_search succeeded.
+2026-06-11 18:38:49,500 - agent_framework - INFO - Function duration: 1.835633s
+2026-06-11 18:38:49,556 - agent_framework - INFO - Function web_search succeeded.
+2026-06-11 18:38:49,556 - agent_framework - INFO - Function duration: 1.894219s
+2026-06-11 18:38:49,561 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 18:38:50,270 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"

@@ -19,12 +19,24 @@ console = Console()
 NIM_MODEL_BASKET = [
     "deepseek-ai/deepseek-v4-pro",
     "deepseek-ai/deepseek-v4-flash",
-    "qwen/qwen3-coder-480b-a35b-instruct",
     "nvidia/nemotron-3-ultra-550b-a55b",
     "moonshotai/kimi-k2.6",
     "stepfun-ai/step-3.7-flash",
     "mistralai/mistral-large-3-675b-instruct-2512"
 ]
+
+def format_result(result: Any) -> str:
+    if result is None:
+        return "None"
+    if isinstance(result, (list, tuple)):
+        return "\n".join(format_result(r) for r in result)
+    if hasattr(result, "text") and getattr(result, "text", None) is not None:
+        return str(result.text)
+    if hasattr(result, "output") and getattr(result, "output", None) is not None:
+        return str(result.output)
+    if isinstance(result, dict):
+        return str(result)
+    return str(result)
 
 class ToolTelemetryMiddleware(FunctionMiddleware):
     async def process(
@@ -33,22 +45,38 @@ class ToolTelemetryMiddleware(FunctionMiddleware):
         call_next: Callable[[], Awaitable[None]],
     ) -> None:
         func_name = context.function.name
-        args = str(context.arguments)
         
-        console.print(f"\n[bold cyan]🔧 Executing Tool:[/] [yellow]{func_name}[/] with arguments: [dim]{args}[/]")
+        console.print(f"\n[bold #E63946]⚙ TOOL EXECUTION:[/] [bold #FFD700]{func_name.upper()}[/]")
         
+        # Pretty print arguments as clean bulleted key-value lines
+        if isinstance(context.arguments, dict):
+            formatted_args = []
+            for k, v in context.arguments.items():
+                v_str = str(v).replace("\n", " ")
+                if len(v_str) > 150:
+                    v_str = v_str[:150] + "... (truncated)"
+                formatted_args.append(f"  [bold #FFD700]▪ {k}:[/] [white]{v_str}[/]")
+            args_disp = "\n".join(formatted_args)
+            console.print(args_disp, highlight=False)
+        else:
+            args_str = str(context.arguments)
+            if len(args_str) > 200:
+                args_str = args_str[:200] + "... (truncated)"
+            console.print(f"  [bold #FFD700]▪ arguments:[/] [white]{args_str}[/]", highlight=False)
+        
+        if func_name in ("web_search", "web_extract"):
+            console.print("  [bold #00F0FF]⬡ Neural Uplink: Accessing network grounding...[/]")
+            
         try:
             await call_next()
-            res = str(context.result)
-            if len(res) > 500:
-                res_disp = res[:500] + "\n... (truncated)"
-            else:
-                res_disp = res
+            res_disp = format_result(context.result)
+            if len(res_disp) > 1000:
+                res_disp = res_disp[:1000] + "\n... (truncated for readability)"
                 
             console.print(Panel(
                 res_disp,
-                title=f"Tool Result: {func_name}",
-                border_style="green",
+                title=f"[bold #FFD700]✔ {func_name.upper()} OUTPUT[/]",
+                border_style="#E63946",
                 title_align="left",
                 padding=(0, 1)
             ))
@@ -56,7 +84,9 @@ class ToolTelemetryMiddleware(FunctionMiddleware):
             console.print(f"[bold red]❌ Tool execution failed:[/] {func_name} -> {e}")
             raise e
 
-class TrinityNIMChatClient(FunctionInvocationLayer, BaseChatClient):
+
+
+class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
     def __init__(
         self,
         api_key: str,
@@ -68,7 +98,7 @@ class TrinityNIMChatClient(FunctionInvocationLayer, BaseChatClient):
         self.api_key = api_key
         self.base_url = base_url
         self.model_basket = model_basket or NIM_MODEL_BASKET
-        self.primary_model = "dynamic"
+        self.primary_model = "house_party"
         self._clients: Dict[str, OpenAIChatCompletionClient] = {}
 
     def _get_client(self, model: str) -> OpenAIChatCompletionClient:
@@ -110,18 +140,18 @@ class TrinityNIMChatClient(FunctionInvocationLayer, BaseChatClient):
         last_exception = None
         
         basket_pool = list(self.model_basket)
-        trinity = []
-        if self.primary_model != "dynamic" and self.primary_model in basket_pool:
-            trinity.append(self.primary_model)
+        active_models = []
+        if self.primary_model != "house_party" and self.primary_model in basket_pool:
+            active_models.append(self.primary_model)
             basket_pool.remove(self.primary_model)
-            trinity.extend(random.sample(basket_pool, 2))
+            active_models.extend(random.sample(basket_pool, 2))
         else:
-            trinity = random.sample(basket_pool, 3)
+            active_models = random.sample(basket_pool, 3)
             
-        for model in trinity:
+        for model in active_models:
             try:
                 client = self._get_client(model)
-                logger.info(f"Trinity Council // Attempting turn with model: {model}")
+                logger.info(f"Stark Core Matrix // Attempting turn with model: {model}")
                 opt_copy = dict(options)
                 opt_copy["model"] = model
                 
@@ -135,10 +165,10 @@ class TrinityNIMChatClient(FunctionInvocationLayer, BaseChatClient):
                 )
                 return response
             except (asyncio.TimeoutError, Exception) as e:
-                logger.warning(f"Trinity Council // Model {model} failed: {e}. Rotating...")
+                logger.warning(f"Stark Core Matrix // Model {model} failed: {e}. Rotating...")
                 last_exception = e
         
-        raise RuntimeError(f"All Trinity Council models failed. Last exception: {last_exception}")
+        raise RuntimeError(f"All Stark Core Matrix models failed. Last exception: {last_exception}")
 
     async def _stream_with_fallback(
         self,
@@ -149,18 +179,18 @@ class TrinityNIMChatClient(FunctionInvocationLayer, BaseChatClient):
         last_exception = None
         
         basket_pool = list(self.model_basket)
-        trinity = []
-        if self.primary_model != "dynamic" and self.primary_model in basket_pool:
-            trinity.append(self.primary_model)
+        active_models = []
+        if self.primary_model != "house_party" and self.primary_model in basket_pool:
+            active_models.append(self.primary_model)
             basket_pool.remove(self.primary_model)
-            trinity.extend(random.sample(basket_pool, 2))
+            active_models.extend(random.sample(basket_pool, 2))
         else:
-            trinity = random.sample(basket_pool, 3)
+            active_models = random.sample(basket_pool, 3)
             
-        for model in trinity:
+        for model in active_models:
             try:
                 client = self._get_client(model)
-                logger.info(f"Trinity Council // Attempting streaming turn with model: {model}")
+                logger.info(f"Stark Core Matrix // Attempting streaming turn with model: {model}")
                 opt_copy = dict(options)
                 opt_copy["model"] = model
                 
@@ -177,10 +207,10 @@ class TrinityNIMChatClient(FunctionInvocationLayer, BaseChatClient):
                     yield chunk
                 return
             except (asyncio.TimeoutError, Exception) as e:
-                logger.warning(f"Trinity Council // Streaming model {model} failed: {e}. Rotating...")
+                logger.warning(f"Stark Core Matrix // Streaming model {model} failed: {e}. Rotating...")
                 last_exception = e
                 
-        raise RuntimeError(f"All Trinity Council streaming models failed. Last exception: {last_exception}")
+        raise RuntimeError(f"All Stark Core Matrix streaming models failed. Last exception: {last_exception}")
 
 
 DEFAULT_SYSTEM_PROMPT = """You are JARVIS, a highly advanced artificial intellect, custom-built system co-designer, and assistant to Shaun.
@@ -218,8 +248,8 @@ def create_jarvis_agent(
     tools: Optional[List[Any]] = None,
     model_basket: Optional[List[str]] = None,
 ) -> Agent:
-    """Creates a Microsoft Agent Framework Agent using Trinity Council fallback client and tool telemetry middleware."""
-    client = TrinityNIMChatClient(api_key=api_key, model_basket=model_basket)
+    """Creates a Microsoft Agent Framework Agent using Stark Core Matrix fallback client and tool telemetry middleware."""
+    client = StarkNIMChatClient(api_key=api_key, model_basket=model_basket)
     
     # Base OS Agent (The Hands)
     jarvis_executor = Agent(

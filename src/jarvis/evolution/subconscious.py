@@ -25,7 +25,7 @@ class SubconsciousEngine:
             "name": name,
             "last_run": time.time()
         })
-        console.print(f"\n[dim cyan]Subconscious:[/] Registered routine '{name}' (Every {interval_seconds}s)")
+        console.print(f"\n[#00E5FF]⬡ Subconscious:[/] Registered routine '{name}' (Every {interval_seconds}s)")
 
     async def _loop(self):
         while self._running:
@@ -33,7 +33,7 @@ class SubconsciousEngine:
             for r in self.routines:
                 if now - r["last_run"] >= r["interval"]:
                     r["last_run"] = now
-                    console.print(f"\n[dim cyan]Subconscious:[/] Triggering routine '{r['name']}'...")
+                    console.print(f"\n[#00E5FF]⬡ Subconscious:[/] Triggering routine '{r['name']}'...")
                     try:
                         await self.agent_runner(r["prompt"])
                     except Exception as e:
@@ -44,7 +44,7 @@ class SubconsciousEngine:
     def start(self):
         self._running = True
         self._task = asyncio.create_task(self._loop())
-        console.print("[dim cyan]⬡ Subconscious Engine Online. Evolution Active.[/]")
+        console.print("[bold #00E5FF]⬡ Subconscious Engine Online. Evolution Active.[/]")
         
     def stop(self):
         self._running = False

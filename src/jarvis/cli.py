@@ -49,7 +49,7 @@ SLASH_COMMANDS = {
     "/new": "Start a fresh dialogue session",
     "/tasks": "Show the Jarvis implementation task list",
     "/skills": "List all loaded skill modules",
-    "/model": "List or set the primary Trinity model",
+    "/model": "List or set the primary Stark Core Matrix model",
     "/cron": "Register a subconscious routine: /cron <seconds> \"<prompt>\"",
     "/clear": "Clear the screen",
     "/exit": "Exit Jarvis TUI"
@@ -82,10 +82,9 @@ PT_STYLE = Style.from_dict({
 
 ASCII_ART = r"""[bold #FFD700]
       _   _   ___ __   __ ___  ___ 
-   _ | | /_\ | _ \ \ \ / // __|/ __|
-  | || |/ _ \|   / \ V / \__ \__ \
-   \__//_/ \_\_|_\  \_/  |___/|___/[/]
-         [bold cyan]⬡ ARC REACTOR ONLINE[/]
+   _ | | /_\ | _ \ \ \ / /|_ _|/ __|
+  | || |/ _ \|   / \ V /  | | \__ \
+   \__//_/ \_\_|_\  \_/  |___||___/[/]
 """
 
 def print_help():
@@ -124,26 +123,47 @@ class JarvisTUI:
             event.current_buffer.start_completion(select_first=False)
 
     def print_splash(self):
-        primary = "Dynamic Trinity"
-        if self.agent and hasattr(self.agent, "client") and self.agent.client.primary_model != "dynamic":
+        primary = "Neural Uplink: Dynamic Matrix"
+        if self.agent and hasattr(self.agent, "client") and self.agent.client.primary_model != "house_party":
             primary = self.agent.client.primary_model
 
-        console.print(ASCII_ART)
-        console.print(Rule("[bold #FFD700]MARK XLVII - SYSTEM TERMINAL[/]", style="#E63946"))
-        console.print(
-            Panel(
-                "[bold cyan]⬡ Connection Status:[/] [white]Active (NVIDIA NIM)[/]\n"
-                f"[bold #FFD700]⚙ Primary Routing:[/] [white]{primary}[/]\n"
-                "[bold #E63946]📐 Fallback Mode:[/]   [white]Dynamic 3-Model Basket[/]",
-                border_style="#FFD700",
-                padding=(0, 2)
-            )
+        # Multi-line Unicode Arc Reactor Graphics
+        reactor_graphic = (
+            "      [#00F0FF]  .---.  [/]\n"
+            "      [#00F0FF] /  [bold #00E5FF]⬡[/]  \\ [/]\n"
+            "      [#00F0FF]| [bold #00E5FF]⬡[/] [bold #FFD700]⬢[/] [bold #00E5FF]⬡[/] |[/]\n"
+            "      [#00F0FF] \\  [bold #00E5FF]⬡[/]  / [/]\n"
+            "      [#00F0FF]  '---'  [/]"
         )
-        console.print("Type [bold #FFD700]/help[/] for a list of commands. Press [bold cyan]Enter[/] to submit. Press [bold cyan]Alt+Enter[/] for multiline.\n")
+
+        from rich.table import Table
+        from rich.align import Align
+
+        info_table = Table.grid(padding=(0, 2))
+        info_table.add_column()
+        info_table.add_column(style="bold #E63946")
+        info_table.add_column()
+        info_table.add_row("[#00F0FF]⬡[/]", "STATUS:", "[bold green]ONLINE[/]")
+        info_table.add_row("[#00F0FF]⬡[/]", "HOST CORE:", "[bold #FFD700]NVIDIA NIM APIs[/]")
+        info_table.add_row("[#00F0FF]⬡[/]", "ROUTING:", f"[bold #FFD700]{primary}[/]")
+        info_table.add_row("[#00F0FF]⬡[/]", "FALLBACK:", "[white]Redundancy: House Party Protocol[/]")
+        info_table.add_row("[#00F0FF]⬡[/]", "MEMORY DB:", f"[white]SQLite ({self.session_id})[/]")
+        
+        splash_table = Table.grid(padding=(0, 4))
+        splash_table.add_row(reactor_graphic, info_table)
+
+        console.print(ASCII_ART)
+        console.print(Panel(
+            Align.center(splash_table),
+            title="[bold #FFD700]MARK XLVII - COGNITIVE INTERFACE[/]",
+            border_style="#E63946",
+            padding=(1, 2)
+        ))
+        console.print("Type [bold #FFD700]/help[/] for command manual. Press [bold cyan]Enter[/] to submit, [bold cyan]Alt+Enter[/] for multiline.\n")
 
 
     def _bottom_toolbar(self):
-        primary = "dynamic"
+        primary = "house_party"
         if self.agent and hasattr(self.agent, "client"):
             primary = self.agent.client.primary_model
             
@@ -178,7 +198,7 @@ class JarvisTUI:
         # Log session startup
         await self.memory.create_session(
             session_id=self.session_id,
-            model="trinity-council",
+            model="house-party",
             system_prompt=self.custom_instructions
         )
         
@@ -194,7 +214,7 @@ class JarvisTUI:
             except Exception:
                 pass
                 
-            console.print(f"\n[dim cyan]Subconscious:[/] Routine completed. Check memory or /tasks for output.")
+            console.print(f"\n[#00E5FF]⬡ Subconscious:[/] Routine completed. Check memory or /tasks for output.")
 
         self.subconscious = SubconsciousEngine(_background_runner)
         self.subconscious.start()
@@ -234,23 +254,23 @@ class JarvisTUI:
             
             if len(parts) == 1:
                 # Just list
-                lines = ["[bold]Trinity Model Basket:[/bold]"]
+                lines = ["[bold]Stark Core Matrix:[/bold]"]
                 for i, m in enumerate(basket):
                     prefix = "  "
                     if client.primary_model == m:
                         prefix = "[bold cyan]⬡[/]"
                     lines.append(f"{prefix} {i+1}. {m}")
                 
-                dyn_prefix = "[bold cyan]⬡[/]" if client.primary_model == "dynamic" else "  "
-                lines.append(f"{dyn_prefix} D. dynamic (Pure Random Routing)")
-                lines.append("\n[dim]Usage: /model <index|name|dynamic>[/dim]")
-                console.print(Panel("\n".join(lines), title="Model Configuration", border_style="#FFD700"))
+                dyn_prefix = "[bold cyan]⬡[/]" if client.primary_model == "house_party" else "  "
+                lines.append(f"{dyn_prefix} H. house_party (Dynamic Multi-Model Protocol)")
+                lines.append("\n[dim]Usage: /model <index|name|house_party>[/dim]")
+                console.print(Panel("\n".join(lines), title="Stark Core Matrix Config", border_style="#FFD700"))
                 return True
             else:
                 arg = parts[1].strip().lower()
-                if arg == "dynamic" or arg == "d":
-                    client.primary_model = "dynamic"
-                    console.print("[bold #FFD700]✓ Primary model set to: dynamic (Pure Random Trinity)[/bold #FFD700]\n")
+                if arg in ("house_party", "houseparty", "house", "h", "dynamic", "d"):
+                    client.primary_model = "house_party"
+                    console.print("[bold #FFD700]✓ Primary routing set to: house_party (Dynamic Multi-Model Protocol)[/bold #FFD700]\n")
                 else:
                     try:
                         idx = int(arg) - 1
@@ -266,7 +286,7 @@ class JarvisTUI:
                             client.primary_model = matched
                             console.print(f"[bold #FFD700]✓ Primary model set to: {matched}[/bold #FFD700]\n")
                         else:
-                            console.print(f"[bold #E63946]Model '{arg}' not found in basket.[/bold #E63946]")
+                            console.print(f"[bold #E63946]Model '{arg}' not found in matrix.[/bold #E63946]")
             return True
         elif base == "/cron":
             try:
@@ -350,14 +370,17 @@ class JarvisTUI:
         raw_buffer = ""
         reasoning_text = ""
         response_text = ""
+        accumulated_text = ""
         
         active_task = None
         
         async def run_agent():
-            nonlocal live, raw_buffer, reasoning_text, response_text
+            nonlocal live, raw_buffer, reasoning_text, response_text, accumulated_text
             try:
                 # We start streaming the response
                 async for chunk in self.agent.run(messages=agent_msgs, stream=True):
+                    has_tool_call = any(c.type == "function_call" for c in chunk.contents)
+                    
                     if chunk.text:
                         if not live:
                             live = Live(Group(), refresh_per_second=15, console=console)
@@ -384,25 +407,37 @@ class JarvisTUI:
                         # Update render group
                         renderables = []
                         if reasoning_text:
-                            renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="dim #FFD700", title_align="left"))
+                            renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="#FFD700", title_align="left"))
                         if response_text:
                             renderables.append(Markdown(response_text))
                             
                         live.update(Group(*renderables))
                         
+                    if has_tool_call:
+                        if live:
+                            live.stop()
+                            live = None
+                        if response_text.strip():
+                            console.print(Markdown(response_text))
+                        if reasoning_text:
+                            accumulated_text += f"<think>\n{reasoning_text}\n</think>\n"
+                        accumulated_text += response_text
+                        raw_buffer = ""
+                        reasoning_text = ""
+                        response_text = ""
+                        
             except asyncio.CancelledError:
                 console.print("\n[bold #E63946]⚡ Interrupted[/]\n")
                 # Ensure we store the interruption in memory
-                final_text = ""
                 if reasoning_text:
-                    final_text += f"<think>\n{reasoning_text}\n</think>\n"
-                final_text += response_text + "\n\n[Generation Interrupted by User]"
+                    accumulated_text += f"<think>\n{reasoning_text}\n</think>\n"
+                accumulated_text += response_text + "\n\n[Generation Interrupted by User]"
                 
-                if final_text.strip():
+                if accumulated_text.strip():
                     await self.memory.add_message(
                         session_id=self.session_id,
                         role="assistant",
-                        content=final_text
+                        content=accumulated_text
                     )
             except Exception as ex:
                 console.print(f"\n[bold #E63946]Error during response generation:[/] {ex}")
@@ -413,16 +448,15 @@ class JarvisTUI:
                     live = None
                 
                 # Store agent turn response
-                final_text = ""
                 if reasoning_text:
-                    final_text += f"<think>\n{reasoning_text}\n</think>\n"
-                final_text += response_text
+                    accumulated_text += f"<think>\n{reasoning_text}\n</think>\n"
+                accumulated_text += response_text
                 
-                if final_text.strip():
+                if accumulated_text.strip():
                     await self.memory.add_message(
                         session_id=self.session_id,
                         role="assistant",
-                        content=final_text
+                        content=accumulated_text
                     )
                 console.print() # separating line
                 

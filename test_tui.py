@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.append("/home/shaun/jarvis/src")
 from jarvis.cli import JarvisTUI
 
-async def test():
+async def run_test():
     tui = JarvisTUI()
     await tui.init()
     print("\n--- Testing /model list ---")
@@ -17,12 +17,12 @@ async def test():
     await tui.handle_slash("/model 2")
     print(f"Agent state primary_model: {tui.agent.client.primary_model}")
     
-    print("\n--- Testing /model dynamic ---")
-    await tui.handle_slash("/model dynamic")
+    print("\n--- Testing /model house_party ---")
+    await tui.handle_slash("/model house_party")
     print(f"Agent state primary_model: {tui.agent.client.primary_model}")
     
     print("\n--- Testing splash print ---")
     tui.print_splash()
     
 if __name__ == '__main__':
-    asyncio.run(test())
+    asyncio.run(run_test())
