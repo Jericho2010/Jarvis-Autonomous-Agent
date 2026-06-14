@@ -882,7 +882,7 @@ class JarvisTUI:
             multiline=True
         )
         
-        with patch_stdout():
+        with patch_stdout(raw=True):
             while True:
                 try:
                     user_input = await session_pt.prompt_async(
@@ -950,6 +950,8 @@ class JarvisTUI:
             # Clear user prompt line and reprint cleaned version
             try:
                 num_lines = len(prompt.split('\n'))
+                sys.stdout.flush()
+                await asyncio.sleep(0.02)
                 sys.__stdout__.write(f"\033[F\033[K" * num_lines)
                 sys.__stdout__.flush()
                 console.print(f"[bold #FFD700]❯ [/]{cleaned_prompt}")
