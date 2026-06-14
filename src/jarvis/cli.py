@@ -66,6 +66,8 @@ logger = logging.getLogger("jarvis.cli_client")
 SLASH_COMMANDS = {
     "/help": "Show this help manual",
     "/new": "Start a fresh dialogue session",
+    "/switch": "Switch to an existing session: /switch [session_id|index]",
+    "/agent": "Switch active session agent: /agent <homer|friday|plato|jarvis>",
     "/tasks": "Show the Jarvis implementation task list",
     "/skills": "List all loaded skill modules",
     "/models": "List available cognitive models",
@@ -89,6 +91,52 @@ class SlashCompleter(Completer):
                     display=cmd,
                     display_meta=desc
                 )
+
+class FileMentionCompleter(Completer):
+    def get_completions(self, document, complete_event):
+        text = document.text_before_cursor
+        idx = text.rfind('@')
+        if idx == -1:
+            return
+        if idx > 0 and not text[idx - 1].isspace():
+            return
+            
+        mention_prefix = text[idx + 1:]
+        try:
+            path_prefix = Path(mention_prefix)
+            if mention_prefix.endswith('/') or mention_prefix.endswith(os.path.sep):
+                scan_dir = Path(".") / path_prefix
+                file_prefix = ""
+            else:
+                scan_dir = Path(".") / path_prefix.parent
+                file_prefix = path_prefix.name
+                
+            if not scan_dir.exists() or not scan_dir.is_dir():
+                return
+                
+            for entry in scan_dir.iterdir():
+                if entry.name.startswith(file_prefix):
+                    if entry.name.startswith('.') and not file_prefix.startswith('.'):
+                        continue
+                    if entry.name in ('.git', '.venv', '__pycache__', 'node_modules'):
+                        continue
+                        
+                    rel_path = entry.relative_to(Path("."))
+                    display_name = entry.name
+                    if entry.is_dir():
+                        display_name += "/"
+                        completion_text = str(rel_path) + "/"
+                    else:
+                        completion_text = str(rel_path)
+                        
+                    yield Completion(
+                        completion_text,
+                        start_position=-len(mention_prefix),
+                        display=display_name,
+                        display_meta="File Attachment"
+                    )
+        except Exception:
+            pass
 
 # Iron Man / J.A.R.V.I.S Theme (Refined for Simplicity & Usability)
 PT_STYLE = Style.from_dict({
@@ -350,7 +398,7 @@ class JarvisTUI:
         info_table.add_row("[#00F0FF]⬡[/]", "HOST CORE:", "[bold #FFD700]NVIDIA NIM APIs[/]")
         info_table.add_row("[#00F0FF]⬡[/]", "ROUTING:", "[bold #FFD700]Stark Core Matrix[/]")
         info_table.add_row("[#00F0FF]⬡[/]", "ENDPOINT:", f"[white]http://localhost:{self.port}[/]")
-        info_table.add_row("[#00F0FF]⬡[/]", "SESSION ID:", f"[white]{self.session_id}[/]")
+        info_table.add_row("[#00F0FF]⬡[/]", "SESSION:", f"[white]{getattr(self, 'session_title', self.session_id)}[/]")
         
         splash_table = Table.grid(padding=(0, 4))
         splash_table.add_row(reactor_graphic, info_table)
@@ -366,8 +414,13 @@ class JarvisTUI:
 
     def _bottom_toolbar(self):
         model = getattr(self, "current_model", "house-party")
+        agent = getattr(self, "active_agent_id", "jarvis")
+        title = getattr(self, "session_title", self.session_id)
+        if len(title) > 30:
+            title = title[:27] + "..."
         return HTML(
-            f" <b>Session:</b> {self.session_id} | "
+            f" <b>Session:</b> {title} | "
+            f"<b>Agent:</b> {agent.upper()} | "
             f"<b>Model:</b> {model} | "
             f"Type / for commands"
         )
@@ -444,18 +497,24 @@ class JarvisTUI:
                 if sessions_list:
                     self.session_id = sessions_list[0]["session_id"]
                     self.current_model = sessions_list[0].get("model") or "house-party"
-                    console.print(f"[bold green]✓ Resuming previous dialogue session: {self.session_id}[/]\n")
+                    self.active_agent_id = sessions_list[0].get("agent_id") or "jarvis"
+                    self.session_title = sessions_list[0].get("title") or self.session_id
+                    console.print(f"[bold green]✓ Resuming previous dialogue session: {self.session_title} ({self.session_id})[/]\n")
                 else:
                     res_new = await client.post(f"http://127.0.0.1:{self.port}/v1/sessions", timeout=5.0)
                     res_new.raise_for_status()
                     self.session_id = res_new.json()["session_id"]
                     self.current_model = "house-party"
+                    self.active_agent_id = "jarvis"
+                    self.session_title = self.session_id
                     console.print(f"[bold green]✓ Created new dialogue session: {self.session_id}[/]\n")
             except Exception as e:
                 logger.error(f"Failed to resolve session on API server: {e}")
                 console.print(f"[bold red]❌ Connection to API server failed:[/] {e}")
                 self.session_id = "local_fallback"
                 self.current_model = "house-party"
+                self.active_agent_id = "jarvis"
+                self.session_title = "Local Fallback"
 
         # Start background sse listener task
         self.in_turn = False
@@ -618,6 +677,17 @@ class JarvisTUI:
                                     text = data.get("text", "")
                                     console.print(f"[bold #FFD700]❯ [/]{text}")
                                     
+                                elif event_type == "agent_changed":
+                                    new_agent = data.get("agent_id", "jarvis")
+                                    self.active_agent_id = new_agent
+                                    console.print(f"\n[bold #00F0FF]⬡ ACTIVE AGENT SWITCHED TO:[/] [bold #FFD700]{new_agent.upper()}[/]")
+                                    
+                                elif event_type == "title_changed":
+                                    new_title = data.get("title", "")
+                                    if new_title:
+                                        self.session_title = new_title
+                                        console.print(f"\n[bold #00F0FF]⬡ SESSION TITLE SET TO:[/] [bold #FFD700]{new_title}[/]")
+
                                 elif event_type == "turn_complete":
                                     cleanup_live_and_print()
                                     console.print()  # separating line
@@ -742,6 +812,82 @@ class JarvisTUI:
             ]
             console.print(Panel("\n".join(lines), title="Cognitive Sub-routines Matrix", border_style="#E63946"))
             return True
+        elif base == "/switch":
+            async with httpx.AsyncClient() as client:
+                try:
+                    res = await client.get(f"http://127.0.0.1:{self.port}/v1/sessions", timeout=5.0)
+                    res.raise_for_status()
+                    sessions = res.json()
+                    
+                    if len(parts) < 2:
+                        lines = ["[bold]Existing Dialogue Sessions:[/bold]"]
+                        for i, s in enumerate(sessions):
+                            active_indicator = "  "
+                            if s["session_id"] == self.session_id:
+                                active_indicator = "[bold cyan]⬡[/]"
+                            title = s.get("title") or s["session_id"]
+                            agent = s.get("agent_id", "jarvis").upper()
+                            model = s.get("model") or "house-party"
+                            lines.append(f"{active_indicator} {i+1}. {title} [dim]({agent} | {model} | {s['session_id']})[/dim]")
+                        lines.append("\n[dim]Usage: /switch <index|session_id>[/dim]")
+                        console.print(Panel("\n".join(lines), title="Stark Dialogue Archive", border_style="#FFD700"))
+                        return True
+                    
+                    arg = parts[1].strip()
+                    matched_session = None
+                    try:
+                        idx = int(arg) - 1
+                        if 0 <= idx < len(sessions):
+                            matched_session = sessions[idx]
+                        else:
+                            console.print("[bold #E63946]Invalid session index.[/bold #E63946]\n")
+                            return True
+                    except ValueError:
+                        matched_session = next((s for s in sessions if arg == s["session_id"]), None)
+                        if not matched_session:
+                            matched_session = next((s for s in sessions if s["session_id"].startswith(arg)), None)
+                            
+                    if not matched_session:
+                        console.print(f"[bold #E63946]Session '{arg}' not found.[/bold #E63946]\n")
+                        return True
+                    
+                    self.session_id = matched_session["session_id"]
+                    self.current_model = matched_session.get("model") or "house-party"
+                    self.active_agent_id = matched_session.get("agent_id") or "jarvis"
+                    self.session_title = matched_session.get("title") or self.session_id
+                    
+                    if hasattr(self, "sse_task"):
+                        self.sse_task.cancel()
+                    self.sse_task = asyncio.create_task(self.sse_listener())
+                    
+                    console.print(f"[bold #FFD700]✓ Switched to session: {self.session_title} ({self.session_id})[/bold #FFD700]\n")
+                except Exception as e:
+                    console.print(f"[bold red]❌ Failed to switch session:[/] {e}\n")
+            return True
+        elif base == "/agent":
+            if len(parts) < 2:
+                console.print(f"[bold #FFD700]Active Session Agent:[/] [bold cyan]{getattr(self, 'active_agent_id', 'jarvis').upper()}[/bold cyan]")
+                console.print("[dim]Usage: /agent <jarvis|friday|homer|plato>[/dim]\n")
+                return True
+            
+            agent_id = parts[1].strip().lower()
+            if agent_id not in ("jarvis", "friday", "homer", "plato"):
+                console.print(f"[bold #E63946]Invalid agent ID '{agent_id}'. Must be one of: jarvis, friday, homer, plato.[/bold #E63946]\n")
+                return True
+                
+            async with httpx.AsyncClient() as client:
+                try:
+                    res = await client.post(
+                        f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}/switch-agent",
+                        json={"agent_id": agent_id},
+                        timeout=5.0
+                    )
+                    res.raise_for_status()
+                    self.active_agent_id = agent_id
+                    console.print(f"[bold #FFD700]✓ Active agent set to: {agent_id.upper()}[/bold #FFD700]\n")
+                except Exception as e:
+                    console.print(f"[bold red]❌ Failed to switch agent:[/] {e}\n")
+            return True
         elif base == "/exit":
             self.shutdown()
             sys.exit(0)
@@ -753,8 +899,9 @@ class JarvisTUI:
         history_path = Path("/home/shaun/jarvis/data/pt_history.txt")
         history_path.parent.mkdir(parents=True, exist_ok=True)
         
+        from prompt_toolkit.completion import merge_completers
         session_pt = PromptSession(
-            completer=SlashCompleter(),
+            completer=merge_completers([SlashCompleter(), FileMentionCompleter()]),
             auto_suggest=AutoSuggestFromHistory(),
             style=PT_STYLE,
             key_bindings=self.kb,
@@ -797,17 +944,58 @@ class JarvisTUI:
 
     async def execute_turn(self, prompt: str):
         from rich.live import Live
+        import re
         
         # Set turn flag to suspend remote sse listener prints
         self.in_turn = True
         
         try:
+            # Extract and upload @ mentions
+            mentions = re.findall(r'@([^\s]+)', prompt)
+            uploaded_files = []
+            cleaned_prompt = prompt
+            
+            async with httpx.AsyncClient() as client:
+                for mention in mentions:
+                    file_path = Path(mention)
+                    if file_path.exists() and file_path.is_file():
+                        try:
+                            contents = file_path.read_bytes()
+                            filename = file_path.name
+                            files_data = {"file": (filename, contents)}
+                            upload_res = await client.post(
+                                f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}/files",
+                                files=files_data,
+                                timeout=10.0
+                            )
+                            if upload_res.status_code == 200:
+                                file_info = upload_res.json()
+                                uploaded_files.append(file_info)
+                                cleaned_prompt = cleaned_prompt.replace(f"@{mention}", filename)
+                            else:
+                                logger.error(f"Failed to upload {mention}: {upload_res.text}")
+                        except Exception as upload_err:
+                            logger.error(f"Error uploading file {mention}: {upload_err}")
+            
+            # Clear user prompt line and reprint cleaned version
+            try:
+                num_lines = len(prompt.split('\n'))
+                sys.stdout.write(f"\033[F\033[K" * num_lines)
+                sys.stdout.flush()
+                console.print(f"[bold #FFD700]❯ [/]{cleaned_prompt}")
+            except Exception:
+                pass
+
             # 1. Post request to submit chat input
             async with httpx.AsyncClient() as client:
                 try:
+                    payload = {"message": cleaned_prompt, "client_id": "tui"}
+                    if uploaded_files:
+                        payload["files"] = uploaded_files
+                        
                     chat_res = await client.post(
                         f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}/chat",
-                        json={"message": prompt, "client_id": "tui"},
+                        json=payload,
                         timeout=5.0
                     )
                     chat_res.raise_for_status()
@@ -831,7 +1019,7 @@ class JarvisTUI:
                 if response_text.strip():
                     console.print(Markdown(response_text))
                     response_text = ""
-
+ 
             async with httpx.AsyncClient() as client:
                 try:
                     async with client.stream(
@@ -915,6 +1103,17 @@ class JarvisTUI:
                                         padding=(0, 1)
                                     ))
                                     
+                                elif event_type == "agent_changed":
+                                    new_agent = data.get("agent_id", "jarvis")
+                                    self.active_agent_id = new_agent
+                                    console.print(f"\n[bold #00F0FF]⬡ ACTIVE AGENT SWITCHED TO:[/] [bold #FFD700]{new_agent.upper()}[/]")
+                                    
+                                elif event_type == "title_changed":
+                                    new_title = data.get("title", "")
+                                    if new_title:
+                                        self.session_title = new_title
+                                        console.print(f"\n[bold #00F0FF]⬡ SESSION TITLE SET TO:[/] [bold #FFD700]{new_title}[/]")
+
                                 elif event_type == "turn_complete":
                                     break
                 except Exception as e:

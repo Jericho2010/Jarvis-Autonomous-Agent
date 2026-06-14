@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import contextvars
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -81,6 +81,10 @@ async def on_startup():
 class ChatRequest(BaseModel):
     message: str
     client_id: Optional[str] = None
+    files: Optional[List[dict]] = None
+
+class AgentSwitchRequest(BaseModel):
+    agent_id: str
 
 @app.get("/v1/sessions")
 async def list_sessions():
@@ -100,7 +104,7 @@ async def list_sessions():
             
             # 2. Get sessions that have messages
             query = """
-                SELECT DISTINCT s.id, s.started_at, s.model 
+                SELECT DISTINCT s.id, s.started_at, s.model, s.title, s.agent_id 
                 FROM sessions s
                 JOIN messages m ON s.id = m.session_id
                 ORDER BY s.started_at DESC
@@ -110,10 +114,16 @@ async def list_sessions():
                 
             # If no sessions have messages, return the most recent session
             if not rows:
-                async with conn.execute("SELECT id, started_at, model FROM sessions ORDER BY started_at DESC LIMIT 1") as cursor:
+                async with conn.execute("SELECT id, started_at, model, title, agent_id FROM sessions ORDER BY started_at DESC LIMIT 1") as cursor:
                     rows = await cursor.fetchall()
                     
-            return [{"session_id": r["id"], "started_at": r["started_at"], "model": r["model"] or "house-party"} for r in rows]
+            return [{
+                "session_id": r["id"],
+                "started_at": r["started_at"],
+                "model": r["model"] or "house-party",
+                "title": r["title"] or r["id"],
+                "agent_id": r["agent_id"] or "jarvis"
+            } for r in rows]
     except Exception as e:
         logger.exception("Failed to list sessions")
         raise HTTPException(status_code=500, detail=str(e))
@@ -154,7 +164,19 @@ async def create_session():
         logger.exception("Failed to create session")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Optional[str] = None):
+def synthesize_title(message: str) -> str:
+    import re
+    # Strip any @filename mentions
+    cleaned = re.sub(r'@[^\s]+', '', message).strip()
+    # Collapse multiple whitespaces
+    collapsed = " ".join(cleaned.split())
+    if not collapsed:
+        return "Untitled Session"
+    if len(collapsed) <= 60:
+        return collapsed
+    return collapsed[:59] + "…"
+
+async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Optional[str] = None, files: Optional[List[dict]] = None):
     """Executes the agent turn in a background task and streams updates."""
     # Set the ContextVar for the current task so tool telemetry knows the session_id
     current_session_id.set(session_id)
@@ -164,8 +186,27 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
     await broadcast_event(session_id, "user_message", {"text": prompt, "timestamp": time.time()}, exclude_client_id=exclude_client_id)
     
     try:
+        # Resolve attachments and build full prompt
+        full_prompt = prompt
+        if files:
+            attachment_segments = []
+            for f in files:
+                file_id = f.get("id")
+                filename = f.get("filename")
+                if file_id and filename:
+                    file_path = Path(f"/home/shaun/jarvis/data/sessions/{session_id}/files/{file_id}/{filename}")
+                    if file_path.exists():
+                        try:
+                            # Attempt to read as text
+                            content = file_path.read_text(encoding="utf-8")
+                            attachment_segments.append(f"[Attached File: {filename} ({file_path.stat().st_size} bytes)]\n{content}")
+                        except Exception as file_err:
+                            logger.warning(f"Could not read attachment {filename}: {file_err}")
+            if attachment_segments:
+                full_prompt = "\n\n".join(attachment_segments) + "\n\n" + prompt
+
         # 1. Add user message to SQLite memory
-        await memory.add_message(session_id, "user", prompt)
+        await memory.add_message(session_id, "user", full_prompt)
         
         # 2. Compile instructions and active tools
         profile = await memory.build_profile_prompt()
@@ -188,25 +229,55 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
         skills_tools = load_skills_from_dir(Path("/home/shaun/jarvis/skills"))
         all_tools = [forge_skill, sys_session_send] + skills_tools
         
-        # 3. Create J.A.R.V.I.S. Core agent
-        agent = create_jarvis_agent(
-            api_key=os.environ.get("NVIDIA_API_KEY", ""),
-            instructions_override=custom_instructions,
-            tools=all_tools
-        )
-        
-        # Fetch session model from SQLite
+        # Fetch session model and agent_id from SQLite
         session_model = "house-party"
+        active_agent_id = "jarvis"
         try:
             import aiosqlite
             async with aiosqlite.connect(memory.db_path) as conn:
                 conn.row_factory = aiosqlite.Row
-                async with conn.execute("SELECT model FROM sessions WHERE id = ?", (session_id,)) as cursor:
+                async with conn.execute("SELECT model, agent_id FROM sessions WHERE id = ?", (session_id,)) as cursor:
                     row = await cursor.fetchone()
-                    if row and row["model"]:
-                        session_model = row["model"]
+                    if row:
+                        if row["model"]:
+                            session_model = row["model"]
+                        if row["agent_id"]:
+                            active_agent_id = row["agent_id"]
         except Exception:
-            logger.exception("Failed to fetch session model")
+            logger.exception("Failed to fetch session model / agent_id")
+
+        # 3. Create active agent based on agent_id
+        if active_agent_id in ("friday", "homer", "plato"):
+            subagent_dir = Path(f"/home/shaun/jarvis/skills/{active_agent_id}")
+            config_file = subagent_dir / "config.yaml"
+            soul_file = subagent_dir / f"{active_agent_id}_soul.md"
+            
+            from jarvis.core.subagents import parse_simple_yaml
+            from agent_framework import Agent
+            from jarvis.core.agent import StarkNIMChatClient
+            
+            config = parse_simple_yaml(config_file.read_text(encoding="utf-8"))
+            instructions = soul_file.read_text(encoding="utf-8").strip()
+            
+            model = config.get("model", "house-party")
+            sub_tools = load_skills_from_dir(subagent_dir)
+            
+            api_key = os.environ.get("NVIDIA_API_KEY", "")
+            client = StarkNIMChatClient(api_key=api_key)
+            client.primary_model = model
+            
+            agent = Agent(
+                client=client,
+                name=active_agent_id.upper(),
+                instructions=instructions,
+                tools=sub_tools
+            )
+        else:
+            agent = create_jarvis_agent(
+                api_key=os.environ.get("NVIDIA_API_KEY", ""),
+                instructions_override=custom_instructions,
+                tools=all_tools
+            )
             
         if session_model:
             agent.client.primary_model = session_model
@@ -274,8 +345,22 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
 @app.post("/v1/sessions/{session_id}/chat")
 async def post_message(session_id: str, req: ChatRequest):
     await init_services()
+    
+    # Dynamic title generation on first message
+    try:
+        import aiosqlite
+        async with aiosqlite.connect(memory.db_path) as conn:
+            conn.row_factory = aiosqlite.Row
+            async with conn.execute("SELECT title FROM sessions WHERE id = ?", (session_id,)) as cursor:
+                row = await cursor.fetchone()
+                if row and not row["title"]:
+                    title = synthesize_title(req.message)
+                    await memory.update_session_title(session_id, title)
+    except Exception:
+        logger.exception("Failed to auto-generate session title")
+
     # Start task in background to process and stream via SSE
-    asyncio.create_task(run_agent_turn(session_id, req.message, exclude_client_id=req.client_id))
+    asyncio.create_task(run_agent_turn(session_id, req.message, exclude_client_id=req.client_id, files=req.files))
     return {"status": "submitted"}
 
 @app.get("/v1/sessions/{session_id}/stream")
@@ -316,10 +401,16 @@ async def get_session_detail(session_id: str):
         import aiosqlite
         async with aiosqlite.connect(memory.db_path) as conn:
             conn.row_factory = aiosqlite.Row
-            async with conn.execute("SELECT id, model, started_at FROM sessions WHERE id = ?", (session_id,)) as cursor:
+            async with conn.execute("SELECT id, model, started_at, title, agent_id FROM sessions WHERE id = ?", (session_id,)) as cursor:
                 row = await cursor.fetchone()
                 if row:
-                    return {"session_id": row["id"], "model": row["model"] or "house-party", "started_at": row["started_at"]}
+                    return {
+                        "session_id": row["id"],
+                        "model": row["model"] or "house-party",
+                        "started_at": row["started_at"],
+                        "title": row["title"] or row["id"],
+                        "agent_id": row["agent_id"] or "jarvis"
+                    }
                 raise HTTPException(status_code=404, detail="Session not found")
     except HTTPException:
         raise
@@ -413,6 +504,71 @@ async def get_subagent_detail(name: str):
         }
     except Exception as e:
         logger.exception(f"Failed to load subagent {name}")
+        raise HTTPException(status_code=500, detail=str(e))
+@app.post("/v1/sessions/{session_id}/files")
+async def upload_session_file(session_id: str, file: UploadFile = File(...)):
+    await init_services()
+    try:
+        import uuid
+        file_id = f"file_{uuid.uuid4().hex[:12]}"
+        filename = file.filename or "file"
+        
+        # Save file to data/sessions/{session_id}/files/{file_id}/{filename}
+        file_dir = Path(f"/home/shaun/jarvis/data/sessions/{session_id}/files/{file_id}")
+        file_dir.mkdir(parents=True, exist_ok=True)
+        file_path = file_dir / filename
+        
+        contents = await file.read()
+        file_path.write_bytes(contents)
+        
+        return {
+            "id": file_id,
+            "filename": filename,
+            "bytes": len(contents)
+        }
+    except Exception as e:
+        logger.exception("Failed to upload session file")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/v1/sessions/{session_id}/files/{file_id}/content")
+async def get_session_file_content(session_id: str, file_id: str):
+    await init_services()
+    try:
+        file_dir = Path(f"/home/shaun/jarvis/data/sessions/{session_id}/files/{file_id}")
+        if not file_dir.exists():
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        # Find the first file in the directory
+        files = list(file_dir.glob("*"))
+        if not files:
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        file_path = files[0]
+        return FileResponse(path=str(file_path), filename=file_path.name)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to get session file content")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/v1/sessions/{session_id}/switch-agent")
+async def switch_session_agent(session_id: str, req: AgentSwitchRequest):
+    await init_services()
+    try:
+        agent_id = req.agent_id.lower().strip()
+        if agent_id not in ("jarvis", "friday", "homer", "plato"):
+            raise HTTPException(status_code=400, detail=f"Invalid agent ID: {agent_id}")
+            
+        await memory.update_session_agent(session_id, agent_id)
+        
+        # Broadcast the agent switch to all listeners so clients update their UI
+        await broadcast_event(session_id, "agent_changed", {"agent_id": agent_id})
+        
+        return {"status": "success", "agent_id": agent_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Failed to switch session agent")
         raise HTTPException(status_code=500, detail=str(e))
 
 def import_json_str(data: dict) -> str:

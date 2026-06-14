@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     model TEXT,
     system_prompt TEXT,
+    title TEXT,
+    agent_id TEXT DEFAULT 'jarvis',
     started_at REAL NOT NULL,
     ended_at REAL
 );
@@ -83,17 +85,29 @@ class MemoryManager:
         async with aiosqlite.connect(self.db_path) as conn:
             await conn.executescript(SCHEMA)
             
+            # Dynamic schema migrations for existing database files
+            try:
+                await conn.execute("ALTER TABLE sessions ADD COLUMN title TEXT")
+                await conn.commit()
+            except sqlite3.OperationalError:
+                pass
+            try:
+                await conn.execute("ALTER TABLE sessions ADD COLUMN agent_id TEXT DEFAULT 'jarvis'")
+                await conn.commit()
+            except sqlite3.OperationalError:
+                pass
+            
             # Check FTS5 support
             try:
                 await conn.executescript(FTS_SCHEMA)
             except sqlite3.OperationalError as e:
                 logger.warning(f"SQLite FTS5 initialization failed (FTS5 module missing): {e}")
 
-    async def create_session(self, session_id: str, model: str, system_prompt: str) -> None:
+    async def create_session(self, session_id: str, model: str, system_prompt: str, title: Optional[str] = None, agent_id: str = "jarvis") -> None:
         async with aiosqlite.connect(self.db_path) as conn:
             await conn.execute(
-                "INSERT INTO sessions (id, model, system_prompt, started_at) VALUES (?, ?, ?, ?)",
-                (session_id, model, system_prompt, time.time()),
+                "INSERT INTO sessions (id, model, system_prompt, title, agent_id, started_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (session_id, model, system_prompt, title, agent_id, time.time()),
             )
             await conn.commit()
 
@@ -264,3 +278,20 @@ class MemoryManager:
                     lines.append(f"- {item}")
         
         return "\n".join(lines) if lines else "No compiled preference profile available yet."
+
+    async def update_session_title(self, session_id: str, title: str) -> None:
+        async with aiosqlite.connect(self.db_path) as conn:
+            await conn.execute(
+                "UPDATE sessions SET title = ? WHERE id = ?",
+                (title, session_id),
+            )
+            await conn.commit()
+
+    async def update_session_agent(self, session_id: str, agent_id: str) -> None:
+        async with aiosqlite.connect(self.db_path) as conn:
+            await conn.execute(
+                "UPDATE sessions SET agent_id = ? WHERE id = ?",
+                (agent_id, session_id),
+            )
+            await conn.commit()
+

@@ -86,3 +86,5 @@ Traceback (most recent call last):
     async def get_saint_of_the_day(client: OpenAIChatCompletionClient) -> dict:
                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
 NameError: name 'OpenAIChatCompletionClient' is not defined
+/home/shaun/agent-framework/python/packages/core/agent_framework/_skills.py:121: ExperimentalWarning: [SKILLS] SkillResource is experimental and may change or be removed in future versions without notice.
+/home/shaun/agent-framework/python/packages/core/agent_framework/_harness/_memory.py:651: ExperimentalWarning: [HARNESS] MemoryStore is experimental and may change or be removed in future versions without notice.
