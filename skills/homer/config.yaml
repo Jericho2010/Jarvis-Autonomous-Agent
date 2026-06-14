@@ -1,0 +1,4 @@
+model: "nvidia/mistralai/mistral-large-3-675b-instruct-2512"
+options:
+  temperature: 0.1
+  max_tokens: 4096

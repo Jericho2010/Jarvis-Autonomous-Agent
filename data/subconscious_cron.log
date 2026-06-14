@@ -72,3 +72,17 @@ Loaded tools: generate_creative_solutions
 📤 Pushing to remote main branch...
 ❌ GitHub sync failed: Command '['git', 'push', '-u', 'origin', 'main']' returned non-zero exit status 128.
 JARVIS // Nightly Subconscious Evolution cycle complete.
+/home/shaun/agent-framework/python/packages/core/agent_framework/_skills.py:121: ExperimentalWarning: [SKILLS] SkillResource is experimental and may change or be removed in future versions without notice.
+/home/shaun/agent-framework/python/packages/core/agent_framework/_harness/_memory.py:651: ExperimentalWarning: [HARNESS] MemoryStore is experimental and may change or be removed in future versions without notice.
+Traceback (most recent call last):
+  File "/home/shaun/jarvis/src/evolution/subconscious.py", line 51, in <module>
+    async def get_saint_of_the_day(client: OpenAIChatCompletionClient) -> dict:
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+NameError: name 'OpenAIChatCompletionClient' is not defined
+/home/shaun/agent-framework/python/packages/core/agent_framework/_skills.py:121: ExperimentalWarning: [SKILLS] SkillResource is experimental and may change or be removed in future versions without notice.
+/home/shaun/agent-framework/python/packages/core/agent_framework/_harness/_memory.py:651: ExperimentalWarning: [HARNESS] MemoryStore is experimental and may change or be removed in future versions without notice.
+Traceback (most recent call last):
+  File "/home/shaun/jarvis/src/evolution/subconscious.py", line 51, in <module>
+    async def get_saint_of_the_day(client: OpenAIChatCompletionClient) -> dict:
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+NameError: name 'OpenAIChatCompletionClient' is not defined

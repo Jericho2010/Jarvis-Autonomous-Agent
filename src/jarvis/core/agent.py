@@ -46,6 +46,19 @@ class ToolTelemetryMiddleware(FunctionMiddleware):
     ) -> None:
         func_name = context.function.name
         
+        # Broadcast tool start via SSE if active session context exists
+        try:
+            from jarvis.core.subagents import current_session_id, broadcast_event
+            session_id = current_session_id.get()
+        except ImportError:
+            session_id = None
+            
+        if session_id:
+            await broadcast_event(session_id, "tool_call_start", {
+                "name": func_name,
+                "arguments": context.arguments if isinstance(context.arguments, dict) else {"args": str(context.arguments)}
+            })
+            
         console.print(f"\n[bold #E63946]⚙ TOOL EXECUTION:[/] [bold #FFD700]{func_name.upper()}[/]")
         
         # Pretty print arguments as clean bulleted key-value lines
@@ -70,6 +83,14 @@ class ToolTelemetryMiddleware(FunctionMiddleware):
         try:
             await call_next()
             res_disp = format_result(context.result)
+            
+            # Broadcast tool completion via SSE if active session context exists
+            if session_id:
+                await broadcast_event(session_id, "tool_call_complete", {
+                    "name": func_name,
+                    "output": res_disp
+                })
+                
             if len(res_disp) > 1000:
                 res_disp = res_disp[:1000] + "\n... (truncated for readability)"
                 
@@ -82,6 +103,11 @@ class ToolTelemetryMiddleware(FunctionMiddleware):
             ))
         except Exception as e:
             console.print(f"[bold red]❌ Tool execution failed:[/] {func_name} -> {e}")
+            if session_id:
+                await broadcast_event(session_id, "tool_call_complete", {
+                    "name": func_name,
+                    "error": str(e)
+                })
             raise e
 
 

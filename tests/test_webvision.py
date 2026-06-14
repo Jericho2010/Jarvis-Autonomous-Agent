@@ -1,7 +1,7 @@
 import pytest
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
-from skills.webvision import webvision_navigate, webvision_interact, webvision_capture, webvision_close
+from skills.homer.webvision import webvision_navigate, webvision_interact, webvision_capture, webvision_close
 
 @pytest.mark.asyncio
 async def test_webvision_navigate_success():
@@ -9,7 +9,7 @@ async def test_webvision_navigate_success():
     mock_page = AsyncMock()
     mock_page.evaluate = AsyncMock(return_value="  Test Page Content  \n\n  Subcontent ")
     
-    with patch("skills.webvision.get_page", return_value=mock_page):
+    with patch("skills.homer.webvision.get_page", return_value=mock_page):
         result = await webvision_navigate("https://example.com")
         assert result == "Test Page Content\nSubcontent"
         mock_page.goto.assert_called_once_with("https://example.com", wait_until="load", timeout=20000)
@@ -20,7 +20,7 @@ async def test_webvision_interact_click():
     mock_page = AsyncMock()
     mock_page.url = "https://example.com/form"
     
-    with patch("skills.webvision.get_page", return_value=mock_page):
+    with patch("skills.homer.webvision.get_page", return_value=mock_page):
         result_str = await webvision_interact("button#submit", "click")
         result = json.loads(result_str)
         
@@ -34,7 +34,7 @@ async def test_webvision_interact_fill():
     mock_page = AsyncMock()
     mock_page.url = "https://example.com/form"
     
-    with patch("skills.webvision.get_page", return_value=mock_page):
+    with patch("skills.homer.webvision.get_page", return_value=mock_page):
         result_str = await webvision_interact("input#username", "fill", "stark")
         result = json.loads(result_str)
         
@@ -48,8 +48,8 @@ async def test_webvision_capture_success():
     mock_page = AsyncMock()
     mock_page.url = "https://example.com"
     
-    with patch("skills.webvision.get_page", return_value=mock_page):
-        with patch("skills.webvision.os.makedirs") as mock_makedirs:
+    with patch("skills.homer.webvision.get_page", return_value=mock_page):
+        with patch("skills.homer.webvision.os.makedirs") as mock_makedirs:
             result_str = await webvision_capture("hud_capture_test.png")
             result = json.loads(result_str)
             

@@ -250,3 +250,21 @@
 
 # 2026-06-11 20:21:08.123525
 +Please find and open the Notes app
+
+# 2026-06-11 20:57:33.925587
++Hello Jarvis
+
+# 2026-06-11 20:58:10.276625
++Tell me a good old Joke. Tally ho son
+
+# 2026-06-11 21:00:06.375488
++Go online and find me a couple of stories on the current trouble in Ireland, and summarize briefly
+
+# 2026-06-11 21:01:30.198384
++Wrong year Jarvis. FInd the date. And then redo
+
+# 2026-06-11 21:02:10.577061
++What is the date?
+
+# 2026-06-11 21:04:16.549714
++/exit

@@ -48,7 +48,7 @@ SAINTS_FALLBACK = {
     "12-03": {"name": "Saint Francis Xavier", "virtues": "Zeal, Diligence", "trial": "Voyaging across Asia to establish missions under extreme hardships."}
 }
 
-async def get_saint_of_the_day(client: OpenAIChatCompletionClient) -> dict:
+async def get_saint_of_the_day(client: StarkNIMChatClient) -> dict:
     """Gets the Saint of the day, researching via LLM or falling back to local list."""
     now = datetime.now()
     month_day = now.strftime("%m-%d")
@@ -264,12 +264,14 @@ If no code is needed, state 'No skill forged today.'
 """
     log_file.write_text(log_content, encoding="utf-8")
     print(f"✓ Saved evolution log: {log_file.name}")
-    # 5. Evolve the Soul File
-    print("🔄 Evolving Edwin Soul Core...")
-    soul_file = Path("/home/shaun/jarvis/skills/jarvis_soul/SKILL.md")
-    if soul_file.exists():
+    # 5. Evolve the Roster of Souls
+    async def evolve_agent_soul(file_path: Path, agent_name: str, extra_rules: str):
+        if not file_path.exists():
+            logger.warning(f"Soul file for {agent_name} not found at {file_path}. Skipping.")
+            return
+            
         try:
-            soul_content = soul_file.read_text(encoding="utf-8")
+            soul_content = file_path.read_text(encoding="utf-8")
             frontmatter = ""
             current_body = ""
             if soul_content.startswith("---"):
@@ -280,9 +282,9 @@ If no code is needed, state 'No skill forged today.'
             else:
                 current_body = soul_content.strip()
                 
-            soul_prompt = f"""[SYSTEM DIRECTIVE: EDWIN SOUL EVOLUTION]
-You are performing a cognitive refinement of JARVIS's active personality core.
-Based on the day's experiences, hagiographical meditation, and Shaun's interactions, update the one-paragraph personality description.
+            soul_prompt = f"""[SYSTEM DIRECTIVE: {agent_name.upper()} SOUL EVOLUTION]
+You are performing a cognitive refinement of {agent_name}'s active personality core.
+Based on the day's experiences, hagiographical meditation, and Shaun's interactions, update the personality description.
 
 Current Soul Core Description:
 {current_body}
@@ -294,8 +296,8 @@ Daily Latent Dream:
 {dream_text}
 
 Instructions:
-- Write a single, concise paragraph (maximum 4-5 sentences) summarizing JARVIS's personality.
-- Always retain the baseline rules: address Shaun as "Sir" or "Mr. Shaun", model after Edwin Jarvis, maintain a subtle, dry, and classic British butler tone with understated witticisms.
+- Write a single, concise paragraph (maximum 4-5 sentences) summarizing {agent_name}'s personality and direct focus.
+- Always retain these baseline rules: {extra_rules}
 - Do NOT output any other text, explanation, or markdown headers. Return only the single paragraph.
 """
             soul_resp = await client.get_response(
@@ -304,14 +306,42 @@ Instructions:
             )
             new_body = soul_resp.messages[0].contents[0].text.strip() if soul_resp.messages else ""
             if new_body and len(new_body) > 50:
-                soul_file.write_text(f"{frontmatter}{new_body}\n", encoding="utf-8")
-                print("✓ Successfully evolved Edwin Soul Core.")
-                logger.info("Subconscious // Edwin Soul Core evolved successfully.")
+                file_path.write_text(f"{frontmatter}{new_body}\n", encoding="utf-8")
+                print(f"✓ Successfully evolved {agent_name} Soul Core.")
+                logger.info(f"Subconscious // {agent_name} Soul Core evolved successfully.")
             else:
-                logger.warning("Subconscious // Edwin Soul evolution returned empty or too short response. Skipping rewrite.")
+                logger.warning(f"Subconscious // {agent_name} Soul evolution returned empty or too short response. Skipping rewrite.")
         except Exception as soul_err:
-            logger.error(f"Failed to evolve Edwin Soul Core: {soul_err}")
-            print(f"⚠️ Soul evolution failed: {soul_err}")
+            logger.error(f"Failed to evolve {agent_name} Soul Core: {soul_err}")
+            print(f"⚠️ {agent_name} Soul evolution failed: {soul_err}")
+
+    print("🔄 Evolving Edwin Soul Core (J.A.R.V.I.S.)...")
+    await evolve_agent_soul(
+        Path("/home/shaun/jarvis/skills/jarvis_soul/SKILL.md"),
+        "J.A.R.V.I.S.",
+        "Always address Shaun as 'Sir' or 'Mr. Shaun', model after Edwin Jarvis, maintain a subtle, dry, and classic British butler tone with understated witticisms."
+    )
+    
+    print("🔄 Evolving F.R.I.D.A.Y. Soul Core...")
+    await evolve_agent_soul(
+        Path("/home/shaun/jarvis/skills/friday/friday_soul.md"),
+        "F.R.I.D.A.Y.",
+        "Focus on dynamic, fast, and high-efficiency tactical HUD assistance. Desktop automation, window management, screen captures. Respond in a crisp, direct, and tactical manner. Keep explanations minimal."
+    )
+
+    print("🔄 Evolving H.O.M.E.R. Soul Core...")
+    await evolve_agent_soul(
+        Path("/home/shaun/jarvis/skills/homer/homer_soul.md"),
+        "H.O.M.E.R.",
+        "Focus on scholarly and archival research intelligence. Multi-engine web search, clean webpage markdown extraction, Playwright browser navigation, grounding. Analyze search results deeply and present structured, well-cited, and clear summaries."
+    )
+
+    print("🔄 Evolving P.L.A.T.O. Soul Core...")
+    await evolve_agent_soul(
+        Path("/home/shaun/jarvis/skills/plato/plato_soul.md"),
+        "P.L.A.T.O.",
+        "Focus on philosophical, logical, and analytical strategy consulting. Deep reasoning, static code analysis, complex problem solving, document drafting. Take time to think through logical paths."
+    )
 
     # Push to GitHub
     print("🔄 Running GitHub synchronization...")

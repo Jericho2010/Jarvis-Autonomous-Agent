@@ -649,3 +649,67 @@ SystemExit: 0
 2026-06-11 20:21:50,755 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
 2026-06-11 20:21:53,105 - agent_framework - INFO - Function name: execute_bash
 2026-06-11 20:22:17,513 - agent_framework - INFO - Function duration: 24.407943s
+2026-06-11 20:57:33,971 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 20:57:34,759 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 20:58:10,289 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 20:58:25,291 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-11 20:58:25,305 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 20:58:35,147 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 21:00:06,385 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 21:00:21,386 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model deepseek-ai/deepseek-v4-pro failed: . Rotating...
+2026-06-11 21:00:21,386 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 21:00:36,388 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-11 21:00:36,388 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 21:00:36,919 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 21:00:39,545 - agent_framework - INFO - Function name: web_search
+2026-06-11 21:00:39,584 - jarvis.skills.web_research - INFO - Using Async Tavily search for query: 'current news Ireland trouble 2024 2025 political social unrest'
+2026-06-11 21:00:41,308 - httpx - INFO - HTTP Request: POST https://api.tavily.com/search "HTTP/1.1 200 OK"
+2026-06-11 21:00:41,308 - agent_framework - INFO - Function web_search succeeded.
+2026-06-11 21:00:41,308 - agent_framework - INFO - Function duration: 1.762719s
+2026-06-11 21:00:41,318 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 21:00:42,229 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 21:00:43,156 - agent_framework - INFO - Function name: web_search
+2026-06-11 21:00:43,156 - jarvis.skills.web_research - INFO - Using Async Tavily search for query: 'me a couple of stories on the current trouble in Ireland, and summarize briefly'
+2026-06-11 21:00:44,176 - httpx - INFO - HTTP Request: POST https://api.tavily.com/search "HTTP/1.1 200 OK"
+2026-06-11 21:00:44,176 - agent_framework - INFO - Function web_search succeeded.
+2026-06-11 21:00:44,176 - agent_framework - INFO - Function duration: 1.020238s
+2026-06-11 21:00:44,185 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 21:00:45,096 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 21:01:30,212 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 21:01:45,214 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model deepseek-ai/deepseek-v4-pro failed: . Rotating...
+2026-06-11 21:01:45,214 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 21:01:46,128 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 21:01:46,443 - agent_framework - INFO - Function name: web_search
+2026-06-11 21:01:46,444 - jarvis.skills.web_research - INFO - Using Async Tavily search for query: 'current political and social unrest in Ireland 2024'
+2026-06-11 21:01:48,074 - httpx - INFO - HTTP Request: POST https://api.tavily.com/search "HTTP/1.1 200 OK"
+2026-06-11 21:01:48,074 - agent_framework - INFO - Function web_search succeeded.
+2026-06-11 21:01:48,074 - agent_framework - INFO - Function duration: 1.630775s
+2026-06-11 21:01:48,076 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-11 21:02:10,586 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: moonshotai/kimi-k2.6
+2026-06-11 21:02:11,728 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 21:02:12,346 - agent_framework - INFO - Function name: execute_bash
+2026-06-11 21:02:12,350 - agent_framework - INFO - Function execute_bash succeeded.
+2026-06-11 21:02:12,351 - agent_framework - INFO - Function duration: 0.004257s
+2026-06-11 21:02:12,352 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-11 21:02:27,353 - jarvis.agent - WARNING - Stark Core Matrix // Streaming model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-11 21:02:27,354 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-11 21:02:28,108 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 21:02:28,803 - agent_framework - INFO - Function name: web_search
+2026-06-11 21:02:28,803 - jarvis.skills.web_research - INFO - Using Async Tavily search for query: 'current political and social unrest in Ireland 2026'
+2026-06-11 21:02:30,264 - httpx - INFO - HTTP Request: POST https://api.tavily.com/search "HTTP/1.1 200 OK"
+2026-06-11 21:02:30,265 - agent_framework - INFO - Function web_search succeeded.
+2026-06-11 21:02:30,265 - agent_framework - INFO - Function duration: 1.461788s
+2026-06-11 21:02:30,281 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-11 21:02:32,106 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-11 21:02:59,181 - agent_framework - INFO - Function name: web_extract
+2026-06-11 21:02:59,373 - jarvis.skills.web_research - INFO - Using Async Firecrawl scraping for: https://www.npr.org/2026/04/14/g-s1-117383/fuel-protests-have-irelands-government-facing-possible-no-confidence-vote
+2026-06-11 21:02:59,376 - agent_framework - INFO - Function name: web_extract
+2026-06-11 21:02:59,376 - jarvis.skills.web_research - INFO - Using Async Firecrawl scraping for: https://www.iodireland.ie/resources-media/media-hub/blog/politics-under-pressure-what-to-watch-2026
+2026-06-11 21:03:02,623 - httpx - INFO - HTTP Request: POST https://api.firecrawl.dev/v2/scrape "HTTP/1.1 200 OK"
+2026-06-11 21:03:02,929 - agent_framework - INFO - Function web_extract succeeded.
+2026-06-11 21:03:02,929 - agent_framework - INFO - Function duration: 3.553549s
+2026-06-11 21:03:03,248 - httpx - INFO - HTTP Request: POST https://api.firecrawl.dev/v2/scrape "HTTP/1.1 200 OK"
+2026-06-11 21:03:03,545 - agent_framework - INFO - Function web_extract succeeded.
+2026-06-11 21:03:03,545 - agent_framework - INFO - Function duration: 4.364189s
+2026-06-11 21:03:03,549 - jarvis.agent - INFO - Stark Core Matrix // Attempting streaming turn with model: stepfun-ai/step-3.7-flash
+2026-06-11 21:03:04,362 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"

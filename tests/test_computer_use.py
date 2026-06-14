@@ -1,7 +1,7 @@
 import pytest
 import json
 from unittest.mock import MagicMock, patch
-from skills.computer_use import (
+from skills.friday.computer_use import (
     stark_os_retinal_hud,
     stark_os_kinetic_click,
     stark_os_kinetic_double_click,
@@ -16,8 +16,8 @@ def test_stark_os_retinal_hud_success():
     mock_run = MagicMock()
     mock_run.returncode = 0
     
-    with patch("skills.computer_use.subprocess.run", return_value=mock_run):
-        with patch("skills.computer_use.os.makedirs") as mock_makedirs:
+    with patch("skills.friday.computer_use.subprocess.run", return_value=mock_run):
+        with patch("skills.friday.computer_use.os.makedirs") as mock_makedirs:
             result_str = stark_os_retinal_hud("test.png")
             result = json.loads(result_str)
             assert result["success"] is True
@@ -28,7 +28,7 @@ def test_stark_os_kinetic_click_success():
     mock_run = MagicMock()
     mock_run.returncode = 0
     
-    with patch("skills.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
+    with patch("skills.friday.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
         result_str = stark_os_kinetic_click(100, 200)
         result = json.loads(result_str)
         assert result["success"] is True
@@ -43,7 +43,7 @@ def test_stark_os_kinetic_double_click_success():
     mock_run = MagicMock()
     mock_run.returncode = 0
     
-    with patch("skills.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
+    with patch("skills.friday.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
         result_str = stark_os_kinetic_double_click(300, 400)
         result = json.loads(result_str)
         assert result["success"] is True
@@ -58,7 +58,7 @@ def test_stark_os_kinetic_scroll_success():
     mock_run = MagicMock()
     mock_run.returncode = 0
     
-    with patch("skills.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
+    with patch("skills.friday.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
         result_str = stark_os_kinetic_scroll("down", 5)
         result = json.loads(result_str)
         assert result["success"] is True
@@ -73,7 +73,7 @@ def test_stark_os_kinetic_type_success():
     mock_run = MagicMock()
     mock_run.returncode = 0
     
-    with patch("skills.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
+    with patch("skills.friday.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
         result_str = stark_os_kinetic_type("Stark OS")
         result = json.loads(result_str)
         assert result["success"] is True
@@ -88,7 +88,7 @@ def test_stark_os_kinetic_key_success():
     mock_run = MagicMock()
     mock_run.returncode = 0
     
-    with patch("skills.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
+    with patch("skills.friday.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
         result_str = stark_os_kinetic_key("ctrl+c")
         result = json.loads(result_str)
         assert result["success"] is True
@@ -107,7 +107,7 @@ def test_stark_os_armor_list_windows_success():
         "0x04600006  0 zbook Terminal\n"
     )
     
-    with patch("skills.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
+    with patch("skills.friday.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
         result_str = stark_os_armor_list_windows()
         result = json.loads(result_str)
         assert result["success"] is True
@@ -119,7 +119,7 @@ def test_stark_os_armor_focus_window_success():
     mock_run = MagicMock()
     mock_run.returncode = 0
     
-    with patch("skills.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
+    with patch("skills.friday.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
         result_str = stark_os_armor_focus_window("Firefox")
         result = json.loads(result_str)
         assert result["success"] is True

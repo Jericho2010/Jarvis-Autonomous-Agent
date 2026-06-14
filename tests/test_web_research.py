@@ -2,7 +2,7 @@ import pytest
 import os
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
-from skills.web_research import web_search, web_extract
+from skills.homer.web_research import web_search, web_extract
 
 @pytest.mark.asyncio
 async def test_web_search_tavily_success():
@@ -14,7 +14,7 @@ async def test_web_search_tavily_success():
         ]
     })
     
-    with patch("skills.web_research.get_tavily_client", return_value=mock_tavily_client):
+    with patch("skills.homer.web_research.get_tavily_client", return_value=mock_tavily_client):
         result_str = await web_search("test query")
         result = json.loads(result_str)
         
@@ -32,8 +32,8 @@ async def test_web_search_ddgs_fallback():
     ]
     
     # Force get_tavily_client to return None (simulating no API key)
-    with patch("skills.web_research.get_tavily_client", return_value=None):
-        with patch("skills.web_research.DDGS") as mock_ddgs_class:
+    with patch("skills.homer.web_research.get_tavily_client", return_value=None):
+        with patch("skills.homer.web_research.DDGS") as mock_ddgs_class:
             mock_ddgs_class.return_value.__enter__.return_value = mock_ddgs_instance
             
             result_str = await web_search("test query")
@@ -52,7 +52,7 @@ async def test_web_extract_firecrawl_success():
         "markdown": "Clean Markdown from Firecrawl"
     })
     
-    with patch("skills.web_research.get_firecrawl_app", return_value=mock_firecrawl_app):
+    with patch("skills.homer.web_research.get_firecrawl_app", return_value=mock_firecrawl_app):
         result = await web_extract("https://example.com/page")
         assert result == "Clean Markdown from Firecrawl"
 
@@ -66,8 +66,8 @@ async def test_web_extract_local_fallback():
     mock_client = MagicMock()
     mock_client.get = AsyncMock(return_value=mock_response)
     
-    with patch("skills.web_research.get_firecrawl_app", return_value=None):
-        with patch("skills.web_research.httpx.AsyncClient") as mock_client_class:
+    with patch("skills.homer.web_research.get_firecrawl_app", return_value=None):
+        with patch("skills.homer.web_research.httpx.AsyncClient") as mock_client_class:
             mock_client_class.return_value.__aenter__.return_value = mock_client
             
             result = await web_extract("https://example.com/page")
