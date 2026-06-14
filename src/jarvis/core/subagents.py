@@ -96,16 +96,18 @@ def load_subagent(name: str) -> Agent:
 # maps session_id -> list of asyncio.Queue instances
 session_broadcasters: Dict[str, List[Any]] = {}
 
-async def broadcast_event(session_id: str, event_type: str, data: dict):
+async def broadcast_event(session_id: str, event_type: str, data: dict, exclude_client_id: str = None):
     """Broadcasts an event to all active SSE queues for the session."""
     if not session_id or session_id not in session_broadcasters:
         return
     
     # Create copy to prevent concurrent modification during iteration
-    queues = list(session_broadcasters[session_id])
-    for q in queues:
+    subscribers = list(session_broadcasters[session_id])
+    for sub in subscribers:
+        if exclude_client_id and sub.get("client_id") == exclude_client_id:
+            continue
         try:
-            await q.put({"event": event_type, "data": data})
+            await sub["queue"].put({"event": event_type, "data": data})
         except Exception as e:
             logger.warning(f"Failed to put event into SSE queue: {e}")
 
@@ -148,7 +150,7 @@ async def sys_session_send(subagent: str, prompt: str) -> str:
             if chunk.text:
                 response_text += chunk.text
                 # Broadcast subagent's generation to SSE stream in real-time
-                await broadcast_event(session_id, "text_chunk", {"text": chunk.text})
+                await broadcast_event(session_id, "subagent_text_chunk", {"subagent": subagent_name, "text": chunk.text})
                 
         return response_text
     except Exception as e:

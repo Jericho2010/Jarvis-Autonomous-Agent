@@ -7,7 +7,7 @@ import subprocess
 import time
 import signal
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 import httpx
 
 from dotenv import load_dotenv
@@ -25,9 +25,26 @@ from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from agent_framework._types import Message
 import contextlib
 import warnings
+from prompt_toolkit.patch_stdout import patch_stdout
 
 # Load env from root
 load_dotenv(Path("/home/shaun/jarvis/.env"))
+
+def check_system_dependencies():
+    import shutil
+    missing = []
+    for cmd in ["xdotool", "scrot", "wmctrl"]:
+        if not shutil.which(cmd):
+            missing.append(cmd)
+    try:
+        import playwright
+    except ImportError:
+        missing.append("playwright (python package)")
+        
+    if missing:
+        console.print(f"\n[bold #FFD700]⚠ Stark System Diagnostics // Missing dependencies: {', '.join(missing)}[/bold #FFD700]")
+        console.print("[dim #FFD700]Please run: sudo apt install scrot xdotool wmctrl && playwright install[/dim]\n")
+        logger.warning(f"Startup Diagnostics: Missing dependencies {missing}")
 
 from jarvis.skills.skill_forge import load_skills_from_dir, forge_skill
 from jarvis.evolution.subconscious import SubconsciousEngine
@@ -51,6 +68,9 @@ SLASH_COMMANDS = {
     "/new": "Start a fresh dialogue session",
     "/tasks": "Show the Jarvis implementation task list",
     "/skills": "List all loaded skill modules",
+    "/models": "List available cognitive models",
+    "/model": "Set primary model: /model <name|index>",
+    "/subagents": "List cognitive sub-agent profiles",
     "/clear": "Clear the screen",
     "/exit": "Exit Jarvis TUI"
 }
@@ -98,17 +118,202 @@ async def print_tasks():
     else:
         console.print("[yellow]No tasks file found at active path.[/]")
 
-def is_port_open(port: int) -> bool:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.settimeout(1.0)
-        return s.connect_ex(('127.0.0.1', port)) == 0
+def check_jarvis_service(port: int) -> tuple[bool, bool]:
+    """
+    Checks if the port is open and returns if it runs J.A.R.V.I.S. and if it's open.
+    Returns: (is_jarvis, is_open)
+    """
+    is_open = False
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.5)
+            if s.connect_ex(('127.0.0.1', port)) != 0:
+                return False, False
+            is_open = True
+        import urllib.request
+        import json
+        url = f"http://127.0.0.1:{port}/health"
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=1.0) as response:
+            if response.status == 200:
+                data = json.loads(response.read().decode('utf-8'))
+                return data.get("service") == "jarvis", True
+    except Exception:
+        pass
+    return False, is_open
+
+
+def find_free_port(start_port: int) -> int:
+    """Scans for the next free port sequentially."""
+    port = start_port
+    while port < start_port + 100:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(0.5)
+            if s.connect_ex(('127.0.0.1', port)) != 0:
+                return port
+        port += 1
+    return start_port
+
+PID_FILE = Path("/home/shaun/jarvis/data/server.pid")
+
+def is_pid_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+
+def get_running_server_info() -> tuple[Optional[int], Optional[int]]:
+    if not PID_FILE.exists():
+        return None, None
+    try:
+        lines = PID_FILE.read_text().strip().splitlines()
+        if len(lines) >= 2:
+            pid = int(lines[0])
+            port = int(lines[1])
+            if pid == -1:
+                is_jarvis, _ = check_jarvis_service(port)
+                if is_jarvis:
+                    return pid, port
+            elif is_pid_alive(pid):
+                return pid, port
+    except Exception:
+        pass
+    return None, None
+
+def start_server_daemon(port: int) -> bool:
+    pid, active_port = get_running_server_info()
+    if pid is not None:
+        console.print(f"[bold #FFD700]J.A.R.V.I.S. server is already running with PID {pid} on port {active_port}.[/]")
+        return True
+    
+    # Check if the port is in use
+    is_jarvis, is_open = check_jarvis_service(port)
+    if is_open:
+        if is_jarvis:
+            console.print(f"[bold yellow]A J.A.R.V.I.S. server is already running on port {port} but wasn't tracked by this PID file. Re-registering...[/]")
+            PID_FILE.parent.mkdir(parents=True, exist_ok=True)
+            PID_FILE.write_text(f"-1\n{port}\n")
+            return True
+        else:
+            console.print(f"[bold red]Error: Port {port} is occupied by another service.[/]")
+            return False
+
+    console.print(f"[bold #00F0FF]⬡ Starting J.A.R.V.I.S. server daemon on port {port}...[/]")
+    log_dir = Path("/home/shaun/jarvis/data")
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = open(log_dir / "server.log", "a")
+    
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "jarvis.server.app:app", "--host", "127.0.0.1", "--port", str(port)],
+        stdout=log_file,
+        stderr=log_file,
+        start_new_session=True
+    )
+    
+    PID_FILE.parent.mkdir(parents=True, exist_ok=True)
+    PID_FILE.write_text(f"{proc.pid}\n{port}\n")
+    
+    for _ in range(30):
+        time.sleep(0.5)
+        is_jarvis_spawned, _ = check_jarvis_service(port)
+        if is_jarvis_spawned:
+            console.print(f"[bold green]✓ J.A.R.V.I.S. server daemon started successfully (PID {proc.pid}, port {port}).[/]")
+            return True
+            
+    console.print(f"[bold red]❌ J.A.R.V.I.S. server failed to start within 15 seconds. Check logs at data/server.log[/]")
+    try:
+        proc.terminate()
+        proc.wait(timeout=2.0)
+    except Exception:
+        pass
+    if PID_FILE.exists():
+        PID_FILE.unlink()
+    return False
+
+def stop_server_daemon() -> bool:
+    pid, port = get_running_server_info()
+    if pid is None:
+        console.print("[yellow]J.A.R.V.I.S. server is not running (no active PID file).[/]")
+        if PID_FILE.exists():
+            PID_FILE.unlink()
+        return False
+        
+    console.print(f"[bold #FFD700]Stopping J.A.R.V.I.S. server daemon (PID {pid})...[/]")
+    
+    if pid == -1:
+        console.print("[yellow]PID is unregistered (-1). Clearing tracking file only.[/]")
+        if PID_FILE.exists():
+            PID_FILE.unlink()
+        return True
+
+    try:
+        os.killpg(pid, signal.SIGTERM)
+    except Exception:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except Exception:
+            pass
+            
+    for _ in range(10):
+        time.sleep(0.5)
+        if not is_pid_alive(pid):
+            break
+    else:
+        console.print("[red]Server did not exit on SIGTERM. Escalating to SIGKILL...[/]")
+        try:
+            os.killpg(pid, signal.SIGKILL)
+        except Exception:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except Exception:
+                pass
+                
+    if PID_FILE.exists():
+        PID_FILE.unlink()
+    console.print("[bold green]✓ J.A.R.V.I.S. server daemon stopped.[/]")
+    return True
+
+def status_server_daemon():
+    pid, port = get_running_server_info()
+    if pid is None:
+        console.print("[bold red]J.A.R.V.I.S. Server Status: OFFLINE[/]")
+        return
+        
+    is_jarvis, is_open = check_jarvis_service(port)
+    if is_jarvis:
+        console.print(Panel(
+            f"[bold green]ONLINE[/]\n\n"
+            f"[bold #FFD700]PID:[/] {pid}\n"
+            f"[bold #FFD700]Port:[/] {port}\n"
+            f"[bold #FFD700]URL:[/] http://localhost:{port}",
+            title="J.A.R.V.I.S. Server Daemon Status",
+            border_style="green"
+        ))
+    else:
+        console.print(Panel(
+            f"[bold yellow]STALE PID / UNRESPONSIVE[/]\n\n"
+            f"[bold #FFD700]PID:[/] {pid}\n"
+            f"[bold #FFD700]Port:[/] {port}\n"
+            f"The server process is registered but health checks on port {port} are failing.",
+            title="J.A.R.V.I.S. Server Daemon Status",
+            border_style="yellow"
+        ))
 
 class JarvisTUI:
     def __init__(self):
         self.api_key = os.environ.get("NVIDIA_API_KEY")
+        self.port = int(os.environ.get("JARVIS_PORT", 8008))
         self.session_id = None
         self.spawned_server = None
         self.kb = KeyBindings()
+
         self._setup_bindings()
         
     def _setup_bindings(self):
@@ -144,7 +349,7 @@ class JarvisTUI:
         info_table.add_row("[#00F0FF]⬡[/]", "STATUS:", "[bold green]ONLINE (API SERVER)[/]")
         info_table.add_row("[#00F0FF]⬡[/]", "HOST CORE:", "[bold #FFD700]NVIDIA NIM APIs[/]")
         info_table.add_row("[#00F0FF]⬡[/]", "ROUTING:", "[bold #FFD700]Stark Core Matrix[/]")
-        info_table.add_row("[#00F0FF]⬡[/]", "ENDPOINT:", "[white]http://localhost:8000[/]")
+        info_table.add_row("[#00F0FF]⬡[/]", "ENDPOINT:", f"[white]http://localhost:{self.port}[/]")
         info_table.add_row("[#00F0FF]⬡[/]", "SESSION ID:", f"[white]{self.session_id}[/]")
         
         splash_table = Table.grid(padding=(0, 4))
@@ -160,9 +365,10 @@ class JarvisTUI:
         console.print("Type [bold #FFD700]/help[/] for command manual. Press [bold cyan]Enter[/] to submit, [bold cyan]Alt+Enter[/] for multiline.\n")
 
     def _bottom_toolbar(self):
+        model = getattr(self, "current_model", "house-party")
         return HTML(
             f" <b>Session:</b> {self.session_id} | "
-            f"<b>Server:</b> localhost:8000 | "
+            f"<b>Model:</b> {model} | "
             f"Type / for commands"
         )
 
@@ -170,47 +376,98 @@ class JarvisTUI:
         if not self.api_key:
             console.print("[bold #E63946]WARNING: NVIDIA_API_KEY environment variable is not set. API calls will fail.[/]")
             
-        # 1. Check if server is running on port 8000. If not, auto-spawn.
-        if not is_port_open(8000):
-            console.print("[bold #00F0FF]⬡ Background API Server is offline. Starting service...[/]")
+        # 1. Check if server is running on the configured port or tracked by PID file.
+        pid, active_port = get_running_server_info()
+        if pid is not None:
+            is_jarvis, is_open = check_jarvis_service(active_port)
+            if is_jarvis:
+                self.port = active_port
+                self.external_server = True
+                logger.info(f"Connected to running J.A.R.V.I.S. daemon on port {self.port} (PID {pid})")
+                console.print(f"[bold green]✓ Connected to active J.A.R.V.I.S. server on port {self.port}.[/]")
+            else:
+                self.external_server = False
+        else:
+            is_jarvis, is_open = check_jarvis_service(self.port)
+            if is_jarvis:
+                self.external_server = True
+                logger.info(f"Connected to running J.A.R.V.I.S. server on port {self.port}")
+                console.print(f"[bold green]✓ Connected to active J.A.R.V.I.S. server on port {self.port}.[/]")
+            else:
+                self.external_server = False
+
+        if not self.external_server:
+            is_open = False
+            _, is_open = check_jarvis_service(self.port)
+            if is_open:
+                old_port = self.port
+                self.port = find_free_port(self.port)
+                console.print(f"[bold #FFD700]⚠ Port {old_port} occupied by another service. Scanning for free port... Found {self.port}.[/]")
+                
+            console.print(f"[bold #00F0FF]⬡ Background API Server is offline. Starting service on port {self.port}...[/]")
             log_dir = Path("/home/shaun/jarvis/data")
             log_dir.mkdir(parents=True, exist_ok=True)
             log_file = open(log_dir / "server.log", "a")
             
             self.spawned_server = subprocess.Popen(
-                [sys.executable, "-m", "uvicorn", "jarvis.server.app:app", "--host", "127.0.0.1", "--port", "8000"],
+                [sys.executable, "-m", "uvicorn", "jarvis.server.app:app", "--host", "127.0.0.1", "--port", str(self.port)],
                 stdout=log_file,
                 stderr=log_file,
-                preexec_fn=os.setsid
+                start_new_session=True
             )
             
+            PID_FILE.parent.mkdir(parents=True, exist_ok=True)
+            PID_FILE.write_text(f"{self.spawned_server.pid}\n{self.port}\n")
+            
             # Wait for server to accept connections
-            for _ in range(20):
+            for _ in range(30):
                 await asyncio.sleep(0.5)
-                if is_port_open(8000):
-                    console.print("[bold green]✓ Background API Server spawned successfully.[/]\n")
+                is_jarvis_spawned, _ = check_jarvis_service(self.port)
+                if is_jarvis_spawned:
+                    console.print(f"[bold green]✓ Background API Server spawned successfully on port {self.port}.[/]\n")
                     break
             else:
-                console.print("[bold red]❌ Failed to connect to spawned API server. Verify logs at data/server.log[/]\n")
+                console.print(f"[bold red]❌ Failed to connect to spawned API server on port {self.port}. Verify logs at data/server.log[/]\n")
+                if PID_FILE.exists():
+                    PID_FILE.unlink()
                 
-        # 2. Get a new session ID from the API server
+        # Run diagnostics verification
+        check_system_dependencies()
+
+        # 2. Get active session or create a new one from the API server
         async with httpx.AsyncClient() as client:
             try:
-                res = await client.post("http://127.0.0.1:8000/v1/sessions", timeout=5.0)
+                # Retrieve the session list to resume the most recent one
+                res = await client.get(f"http://127.0.0.1:{self.port}/v1/sessions", timeout=5.0)
                 res.raise_for_status()
-                self.session_id = res.json()["session_id"]
+                sessions_list = res.json()
+                if sessions_list:
+                    self.session_id = sessions_list[0]["session_id"]
+                    self.current_model = sessions_list[0].get("model") or "house-party"
+                    console.print(f"[bold green]✓ Resuming previous dialogue session: {self.session_id}[/]\n")
+                else:
+                    res_new = await client.post(f"http://127.0.0.1:{self.port}/v1/sessions", timeout=5.0)
+                    res_new.raise_for_status()
+                    self.session_id = res_new.json()["session_id"]
+                    self.current_model = "house-party"
+                    console.print(f"[bold green]✓ Created new dialogue session: {self.session_id}[/]\n")
             except Exception as e:
-                logger.error(f"Failed to create session on API server: {e}")
+                logger.error(f"Failed to resolve session on API server: {e}")
                 console.print(f"[bold red]❌ Connection to API server failed:[/] {e}")
                 self.session_id = "local_fallback"
+                self.current_model = "house-party"
+
+        # Start background sse listener task
+        self.in_turn = False
+        self.sse_task = asyncio.create_task(self.sse_listener())
 
         # 3. Startup the subconscious routine engine (redirects routine requests to the server)
         async def _background_runner(prompt: str):
             async with httpx.AsyncClient() as client:
                 try:
                     await client.post(
-                        f"http://127.0.0.1:8000/v1/sessions/{self.session_id}/chat",
-                        json={"message": prompt},
+                        f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}/chat",
+                        json={"message": prompt, "client_id": "tui"},
                         timeout=5.0
                     )
                 except Exception as e:
@@ -221,19 +478,152 @@ class JarvisTUI:
 
     def shutdown(self):
         """Cleans up the subconscious engine and kills the spawned server if active."""
+        if hasattr(self, "sse_task"):
+            self.sse_task.cancel()
+            
         if hasattr(self, "subconscious"):
             self.subconscious.stop()
             
-        if self.spawned_server:
+        if not getattr(self, "external_server", True) and self.spawned_server:
             console.print("\n[dim #FFD700]Shutting down background API server...[/]")
             try:
-                os.killpg(os.getpgid(self.spawned_server.pid), signal.SIGTERM)
+                os.killpg(self.spawned_server.pid, signal.SIGTERM)
                 self.spawned_server.wait(timeout=3.0)
             except Exception:
-                pass
+                try:
+                    self.spawned_server.terminate()
+                    self.spawned_server.wait(timeout=3.0)
+                except Exception:
+                    pass
+            if PID_FILE.exists():
+                PID_FILE.unlink()
             console.print("[dim #FFD700]API Server Offline.[/]")
             
         console.print("\n[dim #FFD700]System Offline. ⚙[/]\n")
+
+    async def sse_listener(self):
+        """Listens to the active session stream and prints updates if not currently in a TUI-driven turn."""
+        import httpx
+        while True:
+            if not self.session_id or self.session_id == "local_fallback":
+                await asyncio.sleep(2.0)
+                continue
+                
+            try:
+                async with httpx.AsyncClient(timeout=None) as client:
+                    async with client.stream(
+                        "GET",
+                        f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}/stream?client_id=tui"
+                    ) as response:
+                        event_type = None
+                        live = None
+                        reasoning_text = ""
+                        response_text = ""
+                        
+                        def cleanup_live_and_print():
+                            nonlocal live, reasoning_text, response_text
+                            if live:
+                                live.stop()
+                                live = None
+                            if reasoning_text.strip():
+                                console.print(Panel(reasoning_text.strip(), title="Thinking Processes", border_style="#FFD700", title_align="left"))
+                                reasoning_text = ""
+                            if response_text.strip():
+                                console.print(Markdown(response_text))
+                                response_text = ""
+
+                        async for line in response.aiter_lines():
+                            if self.in_turn:
+                                if live:
+                                    live.stop()
+                                    live = None
+                                continue
+                                
+                            line = line.strip()
+                            if not line:
+                                continue
+                                
+                            if line.startswith("event:"):
+                                event_type = line.split(":", 1)[1].strip()
+                            elif line.startswith("data:"):
+                                data_str = line.split(":", 1)[1].strip()
+                                try:
+                                    import json
+                                    data = json.loads(data_str)
+                                except Exception:
+                                    data = {}
+                                    
+                                if event_type == "text_chunk":
+                                    text = data.get("text", "")
+                                    if text:
+                                        if not live:
+                                            from rich.live import Live
+                                            from rich.console import Group
+                                            live = Live(Group(), refresh_per_second=15, console=console, transient=True)
+                                            live.start()
+                                        response_text += text
+                                        
+                                        renderables = []
+                                        if reasoning_text:
+                                            renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="#FFD700", title_align="left"))
+                                        if response_text:
+                                            renderables.append(Markdown(response_text))
+                                        live.update(Group(*renderables))
+                                        
+                                elif event_type == "reasoning_chunk":
+                                    text = data.get("text", "")
+                                    if text:
+                                        if not live:
+                                            from rich.live import Live
+                                            from rich.console import Group
+                                            live = Live(Group(), refresh_per_second=15, console=console, transient=True)
+                                            live.start()
+                                        reasoning_text += text
+                                        
+                                        renderables = []
+                                        if reasoning_text:
+                                            renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="#FFD700", title_align="left"))
+                                        if response_text:
+                                            renderables.append(Markdown(response_text))
+                                        live.update(Group(*renderables))
+                                        
+                                elif event_type == "tool_call_start":
+                                    cleanup_live_and_print()
+                                    name = data.get("name", "").upper()
+                                    args = data.get("arguments", {})
+                                    console.print(f"\n[bold #E63946]⚙ TOOL EXECUTION (Web UI):[/] [bold #FFD700]{name}[/]")
+                                    if args:
+                                        for k, v in args.items():
+                                            v_str = str(v).replace("\n", " ")
+                                            if len(v_str) > 150:
+                                                v_str = v_str[:150] + "... (truncated)"
+                                            console.print(f"  [bold #FFD700]▪ {k}:[/] [white]{v_str}[/]", highlight=False)
+                                            
+                                elif event_type == "tool_call_complete":
+                                    cleanup_live_and_print()
+                                    name = data.get("name", "").upper()
+                                    out = data.get("output", "") or data.get("error", "")
+                                    if len(out) > 1000:
+                                        out = out[:1000] + "\n... (truncated for readability)"
+                                    console.print(Panel(
+                                        out,
+                                        title=f"[bold #FFD700]✔ {name} OUTPUT[/]",
+                                        border_style="#E63946",
+                                        title_align="left",
+                                        padding=(0, 1)
+                                    ))
+                                    
+                                elif event_type == "user_message":
+                                    cleanup_live_and_print()
+                                    text = data.get("text", "")
+                                    console.print(f"[bold #FFD700]❯ [/]{text}")
+                                    
+                                elif event_type == "turn_complete":
+                                    cleanup_live_and_print()
+                                    console.print()  # separating line
+            except Exception as e:
+                logger.debug(f"SSE listener reconnection pending: {e}")
+            await asyncio.sleep(2.0)
 
     async def handle_slash(self, cmd: str) -> bool:
         parts = cmd.split(maxsplit=1)
@@ -247,22 +637,110 @@ class JarvisTUI:
         elif base == "/new":
             async with httpx.AsyncClient() as client:
                 try:
-                    res = await client.post("http://127.0.0.1:8000/v1/sessions", timeout=5.0)
+                    res = await client.post(f"http://127.0.0.1:{self.port}/v1/sessions", timeout=5.0)
                     self.session_id = res.json()["session_id"]
+                    try:
+                        session_details = await client.get(f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}", timeout=5.0)
+                        self.current_model = session_details.json().get("model") or "house-party"
+                    except Exception:
+                        self.current_model = "house-party"
                     console.print(f"[bold #FFD700]✓ Started new dialogue session: {self.session_id}[/]\n")
                 except Exception as e:
-                    console.print(f"[bold red]❌ Failed to start new session:[/] {e}")
+                    console.print(f"[bold red]❌ Failed to start new session:[/] {e}\n")
             return True
         elif base == "/tasks":
             await print_tasks()
             return True
         elif base == "/skills":
-            skills_tools = _load_skills_silent(Path("/home/shaun/jarvis/skills"))
-            if not skills_tools:
-                console.print("[bold #FFD700]No custom skills forged yet.[/]")
-            else:
-                lines = [f"- [bold #FFD700]{t.name}[/]: {t.description}" for t in skills_tools]
-                console.print(Panel("\n".join(lines), title="Forged Skill Modules", border_style="#E63946"))
+            skills_tools = load_skills_from_dir(Path("/home/shaun/jarvis/skills"))
+            lines = ["[bold]Loaded Skill Modules:[/bold]"]
+            for s in skills_tools:
+                lines.append(f"  [bold cyan]▪[/] {s.name} - {s.description}")
+            console.print(Panel("\n".join(lines), title="System Skills Matrix", border_style="#FFD700"))
+            return True
+        elif base == "/models":
+            async with httpx.AsyncClient() as client:
+                try:
+                    res_models = await client.get(f"http://127.0.0.1:{self.port}/v1/models", timeout=5.0)
+                    models = res_models.json()["models"]
+                    
+                    res_session = await client.get(f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}", timeout=5.0)
+                    current_model = res_session.json().get("model") or "house-party"
+                    
+                    lines = ["[bold]Stark Core Matrix:[/bold]"]
+                    for i, m in enumerate(models):
+                        prefix = "  "
+                        if m == current_model:
+                            prefix = "[bold cyan]⬡[/]"
+                        
+                        if m == "house-party":
+                            lines.append(f"{prefix} {i+1}. {m} (Dynamic Multi-Model Protocol)")
+                        else:
+                            lines.append(f"{prefix} {i+1}. {m}")
+                    lines.append("\n[dim]Usage: /model <index|name|house_party>[/dim]")
+                    console.print(Panel("\n".join(lines), title="Stark Core Matrix Config", border_style="#FFD700"))
+                except Exception as e:
+                    console.print(f"[bold red]❌ Failed to retrieve models:[/] {e}\n")
+            return True
+        elif base == "/model":
+            if len(parts) < 2:
+                return await self.handle_slash("/models")
+                
+            arg = parts[1].strip().lower()
+            async with httpx.AsyncClient() as client:
+                try:
+                    res_models = await client.get(f"http://127.0.0.1:{self.port}/v1/models", timeout=5.0)
+                    models = res_models.json()["models"]
+                    
+                    matched_model = None
+                    if arg in ("house_party", "houseparty", "house", "h", "dynamic", "d"):
+                        matched_model = "house-party"
+                    else:
+                        try:
+                            idx = int(arg) - 1
+                            if 0 <= idx < len(models):
+                                matched_model = models[idx]
+                            else:
+                                console.print("[bold #E63946]Invalid model index.[/bold #E63946]\n")
+                                return True
+                        except ValueError:
+                            matched_model = next((m for m in models if arg in m.lower()), None)
+                            
+                    if not matched_model:
+                        console.print(f"[bold #E63946]Model '{arg}' not found in matrix.[/bold #E63946]\n")
+                        return True
+                        
+                    res_update = await client.post(
+                        f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}/model",
+                        json={"model": matched_model},
+                        timeout=5.0
+                    )
+                    if res_update.status_code == 200:
+                        self.current_model = matched_model
+                        console.print(f"[bold #FFD700]✓ Primary routing set to: {matched_model}[/bold #FFD700]\n")
+                    else:
+                        console.print(f"[bold red]❌ Failed to update model:[/] {res_update.text}\n")
+                except Exception as e:
+                    console.print(f"[bold red]❌ Connection error:[/] {e}\n")
+            return True
+        elif base in ("/subagents", "/agents", "/sub"):
+            lines = [
+                "[bold #00F0FF]F.R.I.D.A.Y. (Tactical HUD Assistant)[/]",
+                "  [bold #FFD700]▪ Focus:[/] Desktop automation, window management, screen captures & execution.",
+                "  [bold #FFD700]▪ Model:[/] nvidia/stepfun-ai/step-3.7-flash",
+                "  [bold #FFD700]▪ Usage:[/] Ask J.A.R.V.I.S.: 'Ask Friday to take a screenshot' or 'Run command on Friday'.",
+                "",
+                "[bold #00F0FF]H.O.M.E.R. (Scholarly Research Intel)[/]",
+                "  [bold #FFD700]▪ Focus:[/] Multi-engine web search, clean page structures, Playwright navigation & grounding.",
+                "  [bold #FFD700]▪ Model:[/] nvidia/mistralai/mistral-large-3-675b-instruct-2512",
+                "  [bold #FFD700]▪ Usage:[/] Ask J.A.R.V.I.S.: 'Ask Homer to search the web for...'.",
+                "",
+                "[bold #00F0FF]P.L.A.T.O. (Logical Strategy Consultant)[/]",
+                "  [bold #FFD700]▪ Focus:[/] Deep reasoning, static code analysis, complex problem solving & drafting.",
+                "  [bold #FFD700]▪ Model:[/] nvidia/deepseek-ai/deepseek-v4-pro",
+                "  [bold #FFD700]▪ Usage:[/] Ask J.A.R.V.I.S.: 'Ask Plato to review my code in...'"
+            ]
+            console.print(Panel("\n".join(lines), title="Cognitive Sub-routines Matrix", border_style="#E63946"))
             return True
         elif base == "/exit":
             self.shutdown()
@@ -287,161 +765,203 @@ class JarvisTUI:
             multiline=True
         )
         
-        while True:
-            try:
-                user_input = await session_pt.prompt_async(
-                    HTML("<prompt>❯ </prompt>"),
-                    placeholder=HTML("<style fg='#A0A0A0'>Ask anything, or type / for commands…</style>")
-                )
-                user_input = user_input.strip()
-                if not user_input:
+        with patch_stdout():
+            while True:
+                try:
+                    user_input = await session_pt.prompt_async(
+                        HTML("<prompt>❯ </prompt>"),
+                        placeholder=HTML("<style fg='#A0A0A0'>Ask anything, or type / for commands…</style>")
+                    )
+                    user_input = user_input.strip()
+                    if not user_input:
+                        continue
+                    
+                    if user_input.startswith("/"):
+                        handled = await self.handle_slash(user_input)
+                        if not handled:
+                            console.print(f"[bold #E63946]Unknown slash command:[/] {user_input}")
+                        continue
+                    
+                    # Execute agent turn via API
+                    await self.execute_turn(user_input)
+                    
+                except KeyboardInterrupt:
+                    console.print("\n[bold #E63946]⚡ Interrupted[/]\n")
                     continue
-                
-                if user_input.startswith("/"):
-                    handled = await self.handle_slash(user_input)
-                    if not handled:
-                        console.print(f"[bold #E63946]Unknown slash command:[/] {user_input}")
-                    continue
-                
-                # Execute agent turn via API
-                await self.execute_turn(user_input)
-                
-            except KeyboardInterrupt:
-                console.print("\n[bold #E63946]⚡ Interrupted[/]\n")
-                continue
-            except EOFError:
-                self.shutdown()
-                break
-            except Exception as e:
-                console.print(f"[bold #E63946]System Error:[/] {e}")
-                logger.exception("Error in main loop")
+                except EOFError:
+                    self.shutdown()
+                    break
+                except Exception as e:
+                    console.print(f"[bold #E63946]System Error:[/] {e}")
+                    logger.exception("Error in main loop")
 
     async def execute_turn(self, prompt: str):
         from rich.live import Live
         
-        # 1. Post request to submit chat input
-        async with httpx.AsyncClient() as client:
-            try:
-                chat_res = await client.post(
-                    f"http://127.0.0.1:8000/v1/sessions/{self.session_id}/chat",
-                    json={"message": prompt},
-                    timeout=5.0
-                )
-                chat_res.raise_for_status()
-            except Exception as e:
-                console.print(f"[bold red]❌ Failed to send prompt to API server:[/] {e}")
-                return
-                
-        # 2. Subscribe to SSE stream and render live updates
-        live = None
-        reasoning_text = ""
-        response_text = ""
+        # Set turn flag to suspend remote sse listener prints
+        self.in_turn = True
         
-        async with httpx.AsyncClient() as client:
-            try:
-                async with client.stream(
-                    "GET", 
-                    f"http://127.0.0.1:8000/v1/sessions/{self.session_id}/stream", 
-                    timeout=None
-                ) as response:
-                    event_type = None
-                    async for line in response.aiter_lines():
-                        line = line.strip()
-                        if not line:
-                            continue
-                            
-                        if line.startswith("event:"):
-                            event_type = line.split(":", 1)[1].strip()
-                        elif line.startswith("data:"):
-                            data_str = line.split(":", 1)[1].strip()
-                            try:
-                                import json
-                                data = json.loads(data_str)
-                            except Exception:
-                                data = {}
-                                
-                            # Handle different stream events
-                            if event_type == "text_chunk":
-                                text = data.get("text", "")
-                                if text:
-                                    if not live:
-                                        live = Live(Group(), refresh_per_second=15, console=console)
-                                        live.start()
-                                    response_text += text
-                                    
-                                    renderables = []
-                                    if reasoning_text:
-                                        renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="#FFD700", title_align="left"))
-                                    if response_text:
-                                        renderables.append(Markdown(response_text))
-                                    live.update(Group(*renderables))
-                                    
-                            elif event_type == "reasoning_chunk":
-                                text = data.get("text", "")
-                                if text:
-                                    if not live:
-                                        live = Live(Group(), refresh_per_second=15, console=console)
-                                        live.start()
-                                    reasoning_text += text
-                                    
-                                    renderables = []
-                                    if reasoning_text:
-                                        renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="#FFD700", title_align="left"))
-                                    if response_text:
-                                        renderables.append(Markdown(response_text))
-                                    live.update(Group(*renderables))
-                                    
-                            elif event_type == "tool_call_start":
-                                if live:
-                                    live.stop()
-                                    live = None
-                                if response_text.strip():
-                                    console.print(Markdown(response_text))
-                                    response_text = ""
-                                    
-                                name = data.get("name", "").upper()
-                                args = data.get("arguments", {})
-                                console.print(f"\n[bold #E63946]⚙ TOOL EXECUTION:[/] [bold #FFD700]{name}[/]")
-                                if args:
-                                    for k, v in args.items():
-                                        v_str = str(v).replace("\n", " ")
-                                        if len(v_str) > 150:
-                                            v_str = v_str[:150] + "... (truncated)"
-                                        console.print(f"  [bold #FFD700]▪ {k}:[/] [white]{v_str}[/]", highlight=False)
-                                        
-                            elif event_type == "tool_call_complete":
-                                if live:
-                                    live.stop()
-                                    live = None
-                                if response_text.strip():
-                                    console.print(Markdown(response_text))
-                                    response_text = ""
-                                    
-                                name = data.get("name", "").upper()
-                                out = data.get("output", "") or data.get("error", "")
-                                if len(out) > 1000:
-                                    out = out[:1000] + "\n... (truncated for readability)"
-                                    
-                                console.print(Panel(
-                                    out,
-                                    title=f"[bold #FFD700]✔ {name} OUTPUT[/]",
-                                    border_style="#E63946",
-                                    title_align="left",
-                                    padding=(0, 1)
-                                ))
-                                
-                            elif event_type == "turn_complete":
-                                break
-            except Exception as e:
-                console.print(f"\n[bold #E63946]Error during SSE streaming:[/] {e}")
-            finally:
+        try:
+            # 1. Post request to submit chat input
+            async with httpx.AsyncClient() as client:
+                try:
+                    chat_res = await client.post(
+                        f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}/chat",
+                        json={"message": prompt, "client_id": "tui"},
+                        timeout=5.0
+                    )
+                    chat_res.raise_for_status()
+                except Exception as e:
+                    console.print(f"[bold red]❌ Failed to send prompt to API server:[/] {e}")
+                    return
+                    
+            # 2. Subscribe to SSE stream and render live updates
+            live = None
+            reasoning_text = ""
+            response_text = ""
+            
+            def cleanup_live_and_print_accumulators():
+                nonlocal live, reasoning_text, response_text
                 if live:
                     live.stop()
+                    live = None
+                if reasoning_text.strip():
+                    console.print(Panel(reasoning_text.strip(), title="Thinking Processes", border_style="#FFD700", title_align="left"))
+                    reasoning_text = ""
                 if response_text.strip():
                     console.print(Markdown(response_text))
-                console.print() # separating line
+                    response_text = ""
+
+            async with httpx.AsyncClient() as client:
+                try:
+                    async with client.stream(
+                        "GET", 
+                        f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}/stream", 
+                        timeout=None
+                    ) as response:
+                        event_type = None
+                        async for line in response.aiter_lines():
+                            line = line.strip()
+                            if not line:
+                                continue
+                                
+                            if line.startswith("event:"):
+                                event_type = line.split(":", 1)[1].strip()
+                            elif line.startswith("data:"):
+                                data_str = line.split(":", 1)[1].strip()
+                                try:
+                                    import json
+                                    data = json.loads(data_str)
+                                except Exception:
+                                    data = {}
+                                    
+                                # Handle different stream events
+                                if event_type == "text_chunk":
+                                    text = data.get("text", "")
+                                    if text:
+                                        if not live:
+                                            live = Live(Group(), refresh_per_second=15, console=console, transient=True)
+                                            live.start()
+                                        response_text += text
+                                        
+                                        renderables = []
+                                        if reasoning_text:
+                                            renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="#FFD700", title_align="left"))
+                                        if response_text:
+                                            renderables.append(Markdown(response_text))
+                                        live.update(Group(*renderables))
+                                        
+                                elif event_type == "reasoning_chunk":
+                                    text = data.get("text", "")
+                                    if text:
+                                        if not live:
+                                            live = Live(Group(), refresh_per_second=15, console=console, transient=True)
+                                            live.start()
+                                        reasoning_text += text
+                                        
+                                        renderables = []
+                                        if reasoning_text:
+                                            renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="#FFD700", title_align="left"))
+                                        if response_text:
+                                            renderables.append(Markdown(response_text))
+                                        live.update(Group(*renderables))
+                                        
+                                elif event_type == "tool_call_start":
+                                    cleanup_live_and_print_accumulators()
+                                        
+                                    name = data.get("name", "").upper()
+                                    args = data.get("arguments", {})
+                                    console.print(f"\n[bold #E63946]⚙ TOOL EXECUTION:[/] [bold #FFD700]{name}[/]")
+                                    if args:
+                                        for k, v in args.items():
+                                            v_str = str(v).replace("\n", " ")
+                                            if len(v_str) > 150:
+                                                v_str = v_str[:150] + "... (truncated)"
+                                            console.print(f"  [bold #FFD700]▪ {k}:[/] [white]{v_str}[/]", highlight=False)
+                                            
+                                elif event_type == "tool_call_complete":
+                                    cleanup_live_and_print_accumulators()
+                                        
+                                    name = data.get("name", "").upper()
+                                    out = data.get("output", "") or data.get("error", "")
+                                    if len(out) > 1000:
+                                        out = out[:1000] + "\n... (truncated for readability)"
+                                        
+                                    console.print(Panel(
+                                        out,
+                                        title=f"[bold #FFD700]✔ {name} OUTPUT[/]",
+                                        border_style="#E63946",
+                                        title_align="left",
+                                        padding=(0, 1)
+                                    ))
+                                    
+                                elif event_type == "turn_complete":
+                                    break
+                except Exception as e:
+                    console.print(f"\n[bold #E63946]Error during SSE streaming:[/] {e}")
+                finally:
+                    cleanup_live_and_print_accumulators()
+                    console.print() # separating line
+        finally:
+            self.in_turn = False
 
 async def main():
+    args = sys.argv[1:]
+    
+    if len(args) >= 1 and args[0] == "server":
+        if len(args) < 2:
+            console.print("[bold red]Error: Specify server command (start, stop, status).[/]")
+            console.print("Usage: jarvis server start [--port PORT] | stop | status")
+            sys.exit(1)
+            
+        cmd = args[1].lower()
+        if cmd == "start":
+            port = int(os.environ.get("JARVIS_PORT", 8008))
+            if "--port" in args:
+                idx = args.index("--port")
+                if idx + 1 < len(args):
+                    port = int(args[idx + 1])
+            elif "-p" in args:
+                idx = args.index("-p")
+                if idx + 1 < len(args):
+                    port = int(args[idx + 1])
+            
+            success = start_server_daemon(port)
+            sys.exit(0 if success else 1)
+            
+        elif cmd == "stop":
+            success = stop_server_daemon()
+            sys.exit(0 if success else 1)
+            
+        elif cmd == "status":
+            status_server_daemon()
+            sys.exit(0)
+            
+        else:
+            console.print(f"[bold red]Error: Unknown server command '{cmd}'.[/]")
+            console.print("Usage: jarvis server start [--port PORT] | stop | status")
+            sys.exit(1)
+            
     tui = JarvisTUI()
     await tui.init()
     await tui.run_loop()

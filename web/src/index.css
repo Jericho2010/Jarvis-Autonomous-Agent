@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --color-stark-bg: #121214;
+  --color-stark-panel: #1a1a1e;
+  --color-stark-red: #e63946;
+  --color-stark-gold: #ffd700;
+  --color-stark-cyan: #00f0ff;
+  --color-stark-border: rgba(255, 255, 255, 0.05);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-stark-bg);
+    color: #f3f4f6;
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+  }
+  
+  /* Scrollbar customization */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 240, 255, 0.4);
+  }
+}
+
+/* Glassmorphism theme custom classes */
+.stark-panel {
+  background: rgba(26, 26, 30, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+}
+
+.glow-gold {
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+}
+
+.glow-red {
+  box-shadow: 0 0 15px rgba(230, 57, 70, 0.2);
+}

@@ -26,6 +26,7 @@ def generate_creative_solutions(prompt: str, parameters: dict) -> str:
     else:
         return "No specific solution generated. Please refine your prompt."
 
-# Example usage
-print(generate_creative_solutions("I'm having trouble debugging my code.", {"focus": "logic errors"}))
-print(generate_creative_solutions("How can I approach this complex problem?", {"action": "analyze"}))
+if __name__ == "__main__":
+    # Example usage
+    print(generate_creative_solutions("I'm having trouble debugging my code.", {"focus": "logic errors"}))
+    print(generate_creative_solutions("How can I approach this complex problem?", {"action": "analyze"}))

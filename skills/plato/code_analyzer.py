@@ -38,12 +38,13 @@ def suggest_optimizations(code_snippet):
         suggestions.append("Consider using list comprehensions for improved readability and performance.")
     return suggestions
 
-# Example usage:
-code_example = """
+if __name__ == "__main__":
+    # Example usage:
+    code_example = """
 while True:
     print("Hello, World!")
 """
-insights = analyze_code(code_example)
-suggestions = suggest_optimizations(code_example)
-print("Insights:", insights)
-print("Suggestions:", suggestions)
+    insights = analyze_code(code_example)
+    suggestions = suggest_optimizations(code_example)
+    print("Insights:", insights)
+    print("Suggestions:", suggestions)
