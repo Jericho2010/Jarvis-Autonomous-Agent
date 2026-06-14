@@ -56,6 +56,7 @@ def _load_skills_silent(path):
             return load_skills_from_dir(path)
 
 console = Console()
+raw_console = Console(file=sys.__stdout__)
 logging.basicConfig(
     filename="/home/shaun/jarvis/data/jarvis_client.log",
     level=logging.INFO,
@@ -575,15 +576,11 @@ class JarvisTUI:
                         f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}/stream?client_id=tui"
                     ) as response:
                         event_type = None
-                        live = None
                         reasoning_text = ""
                         response_text = ""
                         
-                        def cleanup_live_and_print():
-                            nonlocal live, reasoning_text, response_text
-                            if live:
-                                live.stop()
-                                live = None
+                        def cleanup_and_print():
+                            nonlocal reasoning_text, response_text
                             if reasoning_text.strip():
                                 console.print(Panel(reasoning_text.strip(), title="Thinking Processes", border_style="#FFD700", title_align="left"))
                                 reasoning_text = ""
@@ -593,9 +590,6 @@ class JarvisTUI:
 
                         async for line in response.aiter_lines():
                             if self.in_turn:
-                                if live:
-                                    live.stop()
-                                    live = None
                                 continue
                                 
                             line = line.strip()
@@ -615,39 +609,15 @@ class JarvisTUI:
                                 if event_type == "text_chunk":
                                     text = data.get("text", "")
                                     if text:
-                                        if not live:
-                                            from rich.live import Live
-                                            from rich.console import Group
-                                            live = Live(Group(), refresh_per_second=15, console=console, transient=True)
-                                            live.start()
                                         response_text += text
-                                        
-                                        renderables = []
-                                        if reasoning_text:
-                                            renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="#FFD700", title_align="left"))
-                                        if response_text:
-                                            renderables.append(Markdown(response_text))
-                                        live.update(Group(*renderables))
                                         
                                 elif event_type == "reasoning_chunk":
                                     text = data.get("text", "")
                                     if text:
-                                        if not live:
-                                            from rich.live import Live
-                                            from rich.console import Group
-                                            live = Live(Group(), refresh_per_second=15, console=console, transient=True)
-                                            live.start()
                                         reasoning_text += text
                                         
-                                        renderables = []
-                                        if reasoning_text:
-                                            renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="#FFD700", title_align="left"))
-                                        if response_text:
-                                            renderables.append(Markdown(response_text))
-                                        live.update(Group(*renderables))
-                                        
                                 elif event_type == "tool_call_start":
-                                    cleanup_live_and_print()
+                                    cleanup_and_print()
                                     name = data.get("name", "").upper()
                                     args = data.get("arguments", {})
                                     console.print(f"\n[bold #E63946]⚙ TOOL EXECUTION (Web UI):[/] [bold #FFD700]{name}[/]")
@@ -659,7 +629,7 @@ class JarvisTUI:
                                             console.print(f"  [bold #FFD700]▪ {k}:[/] [white]{v_str}[/]", highlight=False)
                                             
                                 elif event_type == "tool_call_complete":
-                                    cleanup_live_and_print()
+                                    cleanup_and_print()
                                     name = data.get("name", "").upper()
                                     out = data.get("output", "") or data.get("error", "")
                                     if len(out) > 1000:
@@ -673,7 +643,7 @@ class JarvisTUI:
                                     ))
                                     
                                 elif event_type == "user_message":
-                                    cleanup_live_and_print()
+                                    cleanup_and_print()
                                     text = data.get("text", "")
                                     console.print(f"[bold #FFD700]❯ [/]{text}")
                                     
@@ -687,10 +657,10 @@ class JarvisTUI:
                                     if new_title:
                                         self.session_title = new_title
                                         console.print(f"\n[bold #00F0FF]⬡ SESSION TITLE SET TO:[/] [bold #FFD700]{new_title}[/]")
-
+                                    
                                 elif event_type == "turn_complete":
-                                    cleanup_live_and_print()
-                                    console.print()  # separating line
+                                    cleanup_and_print()
+                                    console.print()
             except Exception as e:
                 logger.debug(f"SSE listener reconnection pending: {e}")
             await asyncio.sleep(2.0)
@@ -980,8 +950,8 @@ class JarvisTUI:
             # Clear user prompt line and reprint cleaned version
             try:
                 num_lines = len(prompt.split('\n'))
-                sys.stdout.write(f"\033[F\033[K" * num_lines)
-                sys.stdout.flush()
+                sys.__stdout__.write(f"\033[F\033[K" * num_lines)
+                sys.__stdout__.flush()
                 console.print(f"[bold #FFD700]❯ [/]{cleaned_prompt}")
             except Exception:
                 pass
@@ -1048,7 +1018,7 @@ class JarvisTUI:
                                     text = data.get("text", "")
                                     if text:
                                         if not live:
-                                            live = Live(Group(), refresh_per_second=15, console=console, transient=True)
+                                            live = Live(Group(), refresh_per_second=15, console=raw_console, transient=True)
                                             live.start()
                                         response_text += text
                                         
@@ -1063,7 +1033,7 @@ class JarvisTUI:
                                     text = data.get("text", "")
                                     if text:
                                         if not live:
-                                            live = Live(Group(), refresh_per_second=15, console=console, transient=True)
+                                            live = Live(Group(), refresh_per_second=15, console=raw_console, transient=True)
                                             live.start()
                                         reasoning_text += text
                                         
