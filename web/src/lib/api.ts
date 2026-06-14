@@ -1,6 +1,8 @@
 export interface Session {
   session_id: string;
   started_at: number;
+  title?: string;
+  agent_id?: string;
 }
 
 export interface ChatMessage {
@@ -116,14 +118,45 @@ export async function createSession(): Promise<string> {
   return data.session_id;
 }
 
-export async function sendChatMessage(sessionId: string, message: string): Promise<boolean> {
+export async function sendChatMessage(
+  sessionId: string, 
+  message: string, 
+  files?: { id: string, filename: string, bytes: number }[]
+): Promise<boolean> {
   const baseUrl = await getApiUrl();
   const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ message, client_id: 'web' })
+    body: JSON.stringify({ message, client_id: 'web', files })
+  });
+  return res.ok;
+}
+
+export async function uploadSessionFile(
+  sessionId: string, 
+  file: File
+): Promise<{ id: string, filename: string, bytes: number }> {
+  const baseUrl = await getApiUrl();
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/files`, {
+    method: 'POST',
+    body: formData
+  });
+  if (!res.ok) throw new Error('Failed to upload file');
+  return await res.json();
+}
+
+export async function switchSessionAgent(sessionId: string, agentId: string): Promise<boolean> {
+  const baseUrl = await getApiUrl();
+  const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/switch-agent`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ agent_id: agentId })
   });
   return res.ok;
 }
@@ -135,7 +168,16 @@ export async function getSessionStream(
   const baseUrl = await getApiUrl();
   const eventSource = new EventSource(`${baseUrl}/v1/sessions/${sessionId}/stream?client_id=web`);
   
-  const eventTypes = ['text_chunk', 'reasoning_chunk', 'tool_call_start', 'tool_call_complete', 'turn_complete', 'user_message'];
+  const eventTypes = [
+    'text_chunk', 
+    'reasoning_chunk', 
+    'tool_call_start', 
+    'tool_call_complete', 
+    'turn_complete', 
+    'user_message',
+    'agent_changed',
+    'title_changed'
+  ];
   
   eventTypes.forEach(type => {
     eventSource.addEventListener(type, (e: MessageEvent) => {
@@ -175,6 +217,18 @@ export async function getSubagentDetails(name: string): Promise<SubagentDetail |
     const baseUrl = await getApiUrl();
     const res = await fetch(`${baseUrl}/v1/subagents/${name}`);
     if (!res.ok) throw new Error('Failed to fetch subagent details');
+    return await res.json();
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+}
+
+export async function getSessionDetail(sessionId: string): Promise<any> {
+  try {
+    const baseUrl = await getApiUrl();
+    const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}`);
+    if (!res.ok) throw new Error('Failed to fetch session details');
     return await res.json();
   } catch (e) {
     console.error(e);

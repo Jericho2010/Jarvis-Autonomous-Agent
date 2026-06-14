@@ -4,9 +4,15 @@ import { SubagentStatus, getSubagentDetails, SubagentDetail } from '../lib/api';
 
 interface SubagentsRosterProps {
   subagents: SubagentStatus[];
+  currentAgentId: string;
+  onSwitchAgent: (agentId: string) => void;
 }
 
-export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({ subagents }) => {
+export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({ 
+  subagents,
+  currentAgentId,
+  onSwitchAgent
+}) => {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [details, setDetails] = useState<SubagentDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -87,14 +93,25 @@ export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({ subagents }) =
       
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {/* Core J.A.R.V.I.S. node */}
-        <div className="p-2.5 rounded border border-white/5 bg-stark-panel/50 hover:border-stark-cyan/20 transition-all">
+        <div 
+          onClick={() => onSwitchAgent('jarvis')}
+          className={`p-2.5 rounded border transition-all cursor-pointer ${
+            currentAgentId === 'jarvis'
+              ? 'bg-stark-cyan/10 border-stark-cyan/35 text-stark-cyan glow-cyan'
+              : 'border-white/5 bg-stark-panel/50 hover:border-white/10 hover:bg-white/5'
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Bot className="w-4 h-4 text-stark-cyan glow-cyan" />
+              <Bot className={`w-4 h-4 ${currentAgentId === 'jarvis' ? 'text-stark-cyan glow-cyan' : 'text-white/60'}`} />
               <span className="text-xs font-bold font-mono">J.A.R.V.I.S. (Core)</span>
             </div>
-            <span className="text-[9px] font-mono text-stark-cyan px-1.5 py-0.5 rounded bg-stark-cyan/10 border border-stark-cyan/15">
-              ORCHESTRATOR
+            <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+              currentAgentId === 'jarvis'
+                ? 'bg-stark-cyan/20 border-stark-cyan/30 text-stark-cyan font-bold'
+                : 'bg-white/5 border-white/10 text-white/40'
+            }`}>
+              {currentAgentId === 'jarvis' ? 'ACTIVE' : 'SELECT'}
             </span>
           </div>
           <p className="text-[10px] text-white/40 font-mono mt-1">Stark Core Matrix Core routing active.</p>
@@ -110,24 +127,34 @@ export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({ subagents }) =
             const Icon = getAgentIcon(agent.name);
             const status = getStatusDetails(agent.activity);
             const isClickable = ['friday', 'homer', 'plato'].includes(agent.name.toLowerCase());
+            const isActive = currentAgentId === agent.name.toLowerCase();
             
             return (
               <div 
                 key={agent.name}
                 onClick={() => isClickable && handleAgentClick(agent.name)}
                 style={{ paddingLeft: `${agent.nestedLevel * 14}px` }}
-                className={`flex flex-col p-2 rounded transition-all hover:bg-white/5 border border-transparent ${
+                className={`flex flex-col p-2 rounded transition-all hover:bg-white/5 border ${
+                  isActive 
+                    ? 'bg-stark-cyan/10 border-stark-cyan/30 text-stark-cyan glow-cyan' 
+                    : 'border-transparent'
+                } ${
                   isClickable ? 'cursor-pointer hover:border-white/10' : ''
                 } ${
-                  agent.activity === 'working' ? 'bg-stark-cyan/5 border-stark-cyan/10' : ''
+                  agent.activity === 'working' && !isActive ? 'bg-stark-cyan/5 border-stark-cyan/10' : ''
                 }`}
               >
                 <div className="flex items-center gap-1">
                   {agent.nestedLevel > 0 && (
                     <CornerDownRight className="w-3.5 h-3.5 text-white/20 -ml-1.5" />
                   )}
-                  <Icon className={`w-3.5 h-3.5 ${agent.activity === 'working' ? 'text-stark-cyan' : 'text-white/60'}`} />
+                  <Icon className={`w-3.5 h-3.5 ${isActive || agent.activity === 'working' ? 'text-stark-cyan' : 'text-white/60'}`} />
                   <span className="text-xs font-mono font-bold text-white/80">{agent.name.toUpperCase()}</span>
+                  {isActive && (
+                    <span className="text-[9px] font-mono text-stark-cyan px-1.5 py-0.5 rounded bg-stark-cyan/15 border border-stark-cyan/25 font-bold uppercase tracking-wider ml-1">
+                      Active
+                    </span>
+                  )}
                   
                   <span className="flex-1" />
                   
@@ -241,7 +268,21 @@ export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({ subagents }) =
             </div>
             
             {/* Modal Footer */}
-            <div className="p-3 border-t border-white/5 bg-black/15 flex justify-end">
+            <div className="p-3 border-t border-white/5 bg-black/15 flex justify-between items-center">
+              <div>
+                {currentAgentId !== selectedAgent.toLowerCase() && (
+                  <button 
+                    onClick={() => {
+                      onSwitchAgent(selectedAgent.toLowerCase());
+                      setSelectedAgent(null);
+                      setDetails(null);
+                    }}
+                    className="text-xs font-mono bg-stark-gold/15 hover:bg-stark-gold/25 text-stark-gold border border-stark-gold/20 px-3 py-1.5 rounded transition-all glow-gold cursor-pointer"
+                  >
+                    ACTIVATE SUB-AGENT
+                  </button>
+                )}
+              </div>
               <button 
                 onClick={() => { setSelectedAgent(null); setDetails(null); }}
                 className="text-xs font-mono bg-stark-cyan/15 hover:bg-stark-cyan/25 text-stark-cyan border border-stark-cyan/20 px-3 py-1.5 rounded transition-all glow-cyan cursor-pointer"

@@ -219,5 +219,82 @@ async def test_subagents_detail_endpoint():
         res_missing = await client.get("/v1/subagents/invalid-agent")
         assert res_missing.status_code == 404
 
+@pytest.mark.anyio
+async def test_file_upload_and_content_delivery():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        with patch("pathlib.Path.exists", return_value=False):
+            create_res = await client.post("/v1/sessions")
+            session_id = create_res.json()["session_id"]
+            
+        file_payload = {"file": ("test.txt", b"Hello from attached test file content", "text/plain")}
+        upload_res = await client.post(
+            f"/v1/sessions/{session_id}/files",
+            files=file_payload
+        )
+        assert upload_res.status_code == 200
+        upload_data = upload_res.json()
+        assert "id" in upload_data
+        assert upload_data["filename"] == "test.txt"
+        assert upload_data["bytes"] == len("Hello from attached test file content")
+        
+        file_id = upload_data["id"]
+        
+        content_res = await client.get(
+            f"/v1/sessions/{session_id}/files/{file_id}/content"
+        )
+        assert content_res.status_code == 200
+        assert content_res.content == b"Hello from attached test file content"
+
+@pytest.mark.anyio
+async def test_switch_session_agent():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        with patch("pathlib.Path.exists", return_value=False):
+            create_res = await client.post("/v1/sessions")
+            session_id = create_res.json()["session_id"]
+            
+        switch_res = await client.post(
+            f"/v1/sessions/{session_id}/switch-agent",
+            json={"agent_id": "homer"}
+        )
+        assert switch_res.status_code == 200
+        assert switch_res.json()["agent_id"] == "homer"
+        
+        detail_res = await client.get(f"/v1/sessions/{session_id}")
+        assert detail_res.status_code == 200
+        assert detail_res.json()["agent_id"] == "homer"
+
+@pytest.mark.anyio
+async def test_dynamic_session_title_synthesis():
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        with patch("pathlib.Path.exists", return_value=False):
+            create_res = await client.post("/v1/sessions")
+            session_id = create_res.json()["session_id"]
+            
+        detail_res = await client.get(f"/v1/sessions/{session_id}")
+        assert detail_res.status_code == 200
+        assert detail_res.json()["title"] == session_id
+        
+        mock_agent = MagicMock()
+        async def mock_agent_stream(*args, **kwargs):
+            class Chunk:
+                def __init__(self, text):
+                    self.text = text
+                    self.contents = []
+            yield Chunk("response")
+        mock_agent.run = mock_agent_stream
+        
+        with patch("jarvis.server.app.create_jarvis_agent", return_value=mock_agent):
+            chat_res = await client.post(
+                f"/v1/sessions/{session_id}/chat",
+                json={"message": "Test dialogue title generation prompt"}
+            )
+            assert chat_res.status_code == 200
+            
+            await asyncio.sleep(0.2)
+            
+            detail_updated = await client.get(f"/v1/sessions/{session_id}")
+            assert detail_updated.status_code == 200
+            assert detail_updated.json()["title"] == "Test dialogue title generation prompt"
+
 
 

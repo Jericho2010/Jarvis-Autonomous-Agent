@@ -11,7 +11,9 @@ import {
   getSessionHistory,
   getSessionModel,
   setSessionModel,
-  getAvailableModels
+  getAvailableModels,
+  getSessionDetail,
+  switchSessionAgent
 } from './lib/api';
 import { ReactorHUD } from './components/ReactorHUD';
 import { SubagentsRoster } from './components/SubagentsRoster';
@@ -36,6 +38,7 @@ export default function App() {
   const [status, setStatus] = useState<'online' | 'offline'>('offline');
   const [port, setPort] = useState<number | null>(null);
   const [currentModel, setCurrentModel] = useState<string>('house-party');
+  const [currentAgent, setCurrentAgent] = useState<string>('jarvis');
   
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -120,12 +123,15 @@ export default function App() {
     setActiveToolArgs(null);
     setScreenshotUrl(null);
 
-    // Fetch actual history and model
+    // Fetch actual history and details
     getSessionHistory(currentSessionId).then(history => {
       setMessages(history);
     });
-    getSessionModel(currentSessionId).then(model => {
-      setCurrentModel(model);
+    getSessionDetail(currentSessionId).then(detail => {
+      if (detail) {
+        setCurrentModel(detail.model || 'house-party');
+        setCurrentAgent(detail.agent_id || 'jarvis');
+      }
     });
     
     // Write TTY clear line
@@ -216,6 +222,16 @@ export default function App() {
         }]);
         setLogs(prev => [...prev, `\x1b[1;33m❯ USER: ${text}\x1b[0m`]);
 
+      } else if (type === 'agent_changed') {
+        const agentId = data.agent_id || 'jarvis';
+        setCurrentAgent(agentId);
+        setLogs(prev => [...prev, `\x1b[36m⬡ ACTIVE AGENT SWITCHED TO: ${agentId.toUpperCase()}\x1b[0m`]);
+
+      } else if (type === 'title_changed') {
+        const title = data.title || '';
+        listSessions().then(setSessions);
+        setLogs(prev => [...prev, `\x1b[36m⬡ SESSION TITLE SET TO: ${title}\x1b[0m`]);
+
       } else if (type === 'turn_complete') {
         // Construct final message
         let finalContent = '';
@@ -269,7 +285,18 @@ export default function App() {
     }
   };
 
-  const handleSendMessage = async (text: string) => {
+  const handleSwitchAgent = async (agentId: string) => {
+    if (!currentSessionId) return;
+    const ok = await switchSessionAgent(currentSessionId, agentId);
+    if (ok) {
+      setCurrentAgent(agentId);
+      setLogs(prev => [...prev, `\x1b[36m⬡ ACTIVE AGENT SET TO: ${agentId.toUpperCase()}\x1b[0m`]);
+    } else {
+      setLogs(prev => [...prev, `\x1b[1;31m❌ Failed to switch active agent!\x1b[0m`]);
+    }
+  };
+
+  const handleSendMessage = async (text: string, files?: { id: string, filename: string, bytes: number }[]) => {
     if (!currentSessionId) return;
     
     const timestamp = Date.now();
@@ -281,7 +308,7 @@ export default function App() {
       timestamp
     }]);
     
-    setLogs(prev => [...prev, `\x1b[1;33m❯ USER: ${text}\x1b[0m`]);
+    setLogs(prev => [...prev, `\x1b[1;33m❯ USER: ${text}${files && files.length > 0 ? ' (with ' + files.length + ' attachments)' : ''}\x1b[0m`]);
 
     // Command Interceptor
     const cmd = text.trim();
@@ -437,7 +464,7 @@ export default function App() {
       }
     }
 
-    const ok = await sendChatMessage(currentSessionId, text);
+    const ok = await sendChatMessage(currentSessionId, text, files);
     if (!ok) {
       setLogs(prev => [...prev, '\x1b[1;31m❌ Error sending prompt to API server!\x1b[0m']);
     }
@@ -498,7 +525,7 @@ export default function App() {
                   : 'bg-transparent border-transparent text-white/60 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <span className="truncate">{s.session_id}</span>
+              <span className="truncate">{s.title || s.session_id}</span>
               <ChevronRight className="w-3 h-3 opacity-40 shrink-0" />
             </button>
           ))}
@@ -518,6 +545,11 @@ export default function App() {
             <div className="flex items-center gap-1">
               <span className="text-white/40">MODEL //</span>
               <span className="text-stark-gold font-bold tracking-wider uppercase">{currentModel}</span>
+            </div>
+            <div className="h-3 w-[1px] bg-white/10" />
+            <div className="flex items-center gap-1">
+              <span className="text-white/40">AGENT //</span>
+              <span className="text-stark-cyan font-bold tracking-wider uppercase">{currentAgent}</span>
             </div>
           </div>
           
@@ -577,6 +609,7 @@ export default function App() {
         <div className="flex-1 min-h-0 flex">
           {activeTab === 'chat' && (
             <ChatStream
+              sessionId={currentSessionId}
               messages={messages}
               streamingText={streamingText}
               streamingReasoning={streamingReasoning}
@@ -594,7 +627,11 @@ export default function App() {
       </div>
 
       {/* 3. Right Sidebar: Cognitive subagent tree */}
-      <SubagentsRoster subagents={subagents} />
+      <SubagentsRoster 
+        subagents={subagents} 
+        currentAgentId={currentAgent} 
+        onSwitchAgent={handleSwitchAgent} 
+      />
       
     </div>
   );

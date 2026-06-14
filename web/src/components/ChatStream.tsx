@@ -1,19 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Terminal, HelpCircle, Layers, Trash2, ArrowUpRight, Cpu } from 'lucide-react';
-import { ChatMessage } from '../lib/api';
+import { Send, Terminal, HelpCircle, Layers, Trash2, ArrowUpRight, Cpu, Paperclip, X } from 'lucide-react';
+import { ChatMessage, uploadSessionFile } from '../lib/api';
 
 interface ChatStreamProps {
+  sessionId: string | null;
   messages: ChatMessage[];
   streamingText: string;
   streamingReasoning: string;
   activeTool: string | null;
   activeToolArgs: any;
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, files?: { id: string, filename: string, bytes: number }[]) => void;
   onClearSession: () => void;
   onNewSession: () => void;
 }
 
 export const ChatStream: React.FC<ChatStreamProps> = ({
+  sessionId,
   messages,
   streamingText,
   streamingReasoning,
@@ -26,6 +28,9 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
   const [input, setInput] = useState('');
   const [showCommands, setShowCommands] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachedFiles, setAttachedFiles] = useState<{ id: string; filename: string; bytes: number }[]>([]);
+  const [uploading, setUploading] = useState(false);
   
   const SLASH_COMMANDS = [
     { cmd: '/help', desc: 'Show help manual' },
@@ -44,23 +49,46 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
     }
   }, [messages, streamingText, streamingReasoning, activeTool]);
 
+  const handlePaperclipClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !sessionId) return;
+    
+    setUploading(true);
+    try {
+      const res = await uploadSessionFile(sessionId, file);
+      setAttachedFiles(prev => [...prev, res]);
+    } catch (err) {
+      console.error('Failed to upload file:', err);
+      alert('Failed to upload file');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachedFile = (id: string) => {
+    setAttachedFiles(prev => prev.filter(f => f.id !== id));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() && attachedFiles.length === 0) return;
     
     const cmd = input.trim().toLowerCase();
     if (cmd === '/clear') {
       onClearSession();
     } else if (cmd === '/new') {
       onNewSession();
-    } else if (cmd.startsWith('/')) {
-      // Pass other commands directly to orchestrator
-      onSendMessage(input.trim());
     } else {
-      onSendMessage(input.trim());
+      onSendMessage(input.trim(), attachedFiles);
     }
     
     setInput('');
+    setAttachedFiles([]);
     setShowCommands(false);
   };
 
@@ -315,25 +343,67 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
         </div>
       )}
 
+      {/* Attached Files Pill Row */}
+      {attachedFiles.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 px-4 py-2 border-t border-white/5 bg-black/10 shrink-0">
+          {attachedFiles.map(file => (
+            <div 
+              key={file.id} 
+              className="flex items-center gap-1 bg-stark-cyan/10 border border-stark-cyan/25 text-stark-cyan px-2 py-0.5 rounded text-xs font-mono glow-cyan"
+            >
+              <span>{file.filename}</span>
+              <button 
+                type="button" 
+                onClick={() => removeAttachedFile(file.id)}
+                className="hover:text-white transition-colors ml-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Message input console */}
       <form 
         onSubmit={handleSubmit}
         className="p-3 bg-black/25 border-t border-white/5 relative z-10"
       >
-        <div className="relative flex items-center">
-          <input
-            type="text"
-            value={input}
-            onChange={handleInputChange}
-            placeholder="Ask anything, or type / for commands…"
-            className="w-full bg-stark-panel/75 border border-white/10 rounded-lg px-4 py-2.5 pr-12 text-sm text-white focus:outline-none focus:border-stark-cyan/40 focus:ring-1 focus:ring-stark-cyan/15 font-sans placeholder-white/25 transition-all"
-          />
+        <div className="relative flex items-center gap-1.5">
           <button
-            type="submit"
-            className="absolute right-2 p-1.5 rounded-md bg-stark-cyan/10 text-stark-cyan hover:bg-stark-cyan/25 focus:outline-none transition-all glow-cyan"
+            type="button"
+            onClick={handlePaperclipClick}
+            disabled={uploading || !sessionId}
+            className={`p-2 rounded-md hover:bg-white/5 focus:outline-none transition-all shrink-0 ${
+              uploading ? 'text-stark-gold animate-pulse' : 'text-white/40 hover:text-white'
+            }`}
+            title="Attach file"
           >
-            <Send className="w-4 h-4" />
+            <Paperclip className="w-4.5 h-4.5" />
           </button>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            className="hidden" 
+          />
+          <div className="relative flex-1 flex items-center">
+            <input
+              type="text"
+              value={input}
+              onChange={handleInputChange}
+              placeholder={uploading ? "Uploading file..." : "Ask anything, or type / for commands…"}
+              disabled={uploading}
+              className="w-full bg-stark-panel/75 border border-white/10 rounded-lg px-4 py-2.5 pr-12 text-sm text-white focus:outline-none focus:border-stark-cyan/40 focus:ring-1 focus:ring-stark-cyan/15 font-sans placeholder-white/25 transition-all"
+            />
+            <button
+              type="submit"
+              disabled={uploading}
+              className="absolute right-2 p-1.5 rounded-md bg-stark-cyan/10 text-stark-cyan hover:bg-stark-cyan/25 focus:outline-none transition-all glow-cyan"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         <div className="flex items-center justify-between mt-2 font-mono text-[9px] text-white/20 px-1">
           <span>PRESS ENTER TO SEND // ALT+ENTER FOR MULTILINE</span>

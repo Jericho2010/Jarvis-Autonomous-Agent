@@ -108,6 +108,8 @@ Inside the CLI, you can type slash commands:
 - `/clear` — Clear the screen.
 - `/tasks` — Show current engineering task backlog.
 - `/new` — Start a fresh dialogue session.
+- `/switch` — Switch between existing dialogue sessions by index or ID.
+- `/agent` — Switch active session agent (homer, friday, plato, jarvis).
 
 ---
 
@@ -157,3 +159,4 @@ The **Hermes Directive** allows JARVIS's personality and skills to self-author b
 - **2026-06-11** - Evolving Soul Core Implementation - Modeled the Edwin British butler persona as a native MAF skill (`skills/jarvis_soul/SKILL.md`); updated TUI startup in `src/jarvis/cli.py` to parse and dynamically inject the soul core; aligned nightly subconscious reflections (`src/evolution/subconscious.py`) to run on `StarkNIMChatClient` in `house_party` mode (completely LLaMA-free) and evolve the soul core body paragraph.
 - **2026-06-11** - Documentation — Created `ARCHITECTURE.md` with full deep-dive covering MAF context pipeline, Stark Core Matrix failover, Skills system, SQLite Memory Engine (FTS5), Edwin Soul Core injection, Hermes 7-phase evolution protocol, Stark OS-Uplink tool table, and WebVision Optical Uplink; updated `README.md` with skill roster table and link to architecture doc.
 - **2026-06-14** - Phase V Reciprocal Mirroring & Log Pollution Cleanup — Implemented reciprocal real-time prompt mirroring and server-side client ID exclusion (`tui`/`web`) to prevent prompt echo loops; silenced import-time debug print pollution from Plato skill module files; built React production web UI assets; updated backend unit tests to align with new SSE event structures and confirmed 30/30 test suite execution.
+- **2026-06-14** - Phase VI Dynamic Session Naming, File Attachments, & Agent Switching — Updated SQLite database schema and implemented migrations to track session titles and active agents; implemented FastAPI endpoints for multipart file uploads, content delivery, and SSE agent/title broadcast synchronization; integrated file extraction, autocomplete file mention completers, and `/agent` / `/switch` commands in the TUI; updated the Web UI dashboard with a paperclip upload widget, attached file chips, an in-place active agent roster switcher, and dynamic sidebar session titles; added python-multipart dependency, verified complete Vite web production builds, and updated unit tests (33/33 passing).
