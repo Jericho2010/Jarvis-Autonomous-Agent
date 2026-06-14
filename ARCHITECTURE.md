@@ -325,12 +325,54 @@ Screenshots are stored in the workspace's `webvision/` directory (gitignored).
 | Component | Technology |
 | :--- | :--- |
 | Agent Orchestration | Microsoft Agent Framework (MAF) |
+| Backend Server | FastAPI, Uvicorn, SSE (Server-Sent Events) |
+| Web UI Client | React, TypeScript, Vite, Tailwind CSS v4 |
+| HUD Node Canvas | `@xyflow/react` |
+| Web TTY Console | `xterm.js` |
 | LLM Endpoints | NVIDIA NIM (OpenAI-compatible API) |
 | TUI Interface | prompt-toolkit + Rich |
 | Persistent Memory | SQLite (aiosqlite + FTS5) |
-| Web Research | Tavily / Firecrawl / DuckDuckGo / httpx+lxml |
+| Web Grounding | Tavily / Firecrawl / DuckDuckGo / httpx+lxml |
 | Browser Automation | Playwright (Chromium) |
 | Desktop Control | scrot / xdotool / wmctrl |
 | Package Management | uv |
 | Version Control | Git + GitHub |
 | Runtime | Python 3.12 |
+
+---
+
+## 9. Decoupled Client-Server & Reciprocal Sync Architecture
+
+JARVIS implements a decoupled, real-time client-server architecture. The backend runs as an autonomous FastAPI service that manages session states, manages the FTS5 SQLite database, executes the core agent loops, and streams updates via Server-Sent Events (SSE). Multiple clients can hook concurrently to a single session.
+
+```mermaid
+graph TD
+    TUI[Jarvis TUI Client] <-->|HTTP POST /chat & SSE GET /stream| FastAPI[FastAPI Server]
+    WebUI[Vite React Web UI] <-->|HTTP POST /chat & SSE GET /stream| FastAPI
+    FastAPI <-->|aiosqlite| SQLite[(SQLite DB)]
+    FastAPI <-->|NIM API| StarkCore[Stark Core Matrix]
+```
+
+### 9.1 FastAPI Server Daemon (`src/jarvis/server/app.py`)
+The server daemon is launched using uvicorn (defaulting to port `8008`, scanning and auto-incrementing if occupied). It hosts the compiled React production assets (`web/dist`) directly at the root `/` URL and exposes REST and streaming endpoints:
+- `POST /v1/sessions`: Instantiates a new dialogue session.
+- `GET /v1/sessions`: Lists active sessions, filtering out empty sessions older than 1 hour.
+- `GET /v1/sessions/{session_id}/stream`: Establishes the Server-Sent Events (SSE) connection stream.
+- `POST /v1/sessions/{session_id}/chat`: Submits a user prompt to run in a background agent execution turn.
+- `GET /v1/models` & `POST /v1/sessions/{session_id}/model`: Retrieve/update the active matrix model.
+- `GET /v1/subagents/{name}`: Loads subagent matrix profiles (config, tools, and soul instructions).
+
+### 9.2 Real-Time Reciprocal Mirroring & Exclude Filtering
+To sync multiple clients in real-time (TUI and Web UI) without prompt echoing:
+1. **Client ID Registration**: Clients identify themselves with static client IDs (`tui` or `web`) via the stream URL (`GET /stream?client_id=...`) and chat payload (`POST /chat` with `client_id`).
+2. **Exclusion Broadcasting**: On chat submission, the server immediately broadcasts a `user_message` event containing the prompt text and timestamp to all active SSE queues *except* the queue matching the sender's `client_id`.
+3. **Passive Display Rendering**:
+   - When the **Web UI** receives `user_message`, it appends it to the message state and terminal logs, echoing the TUI user's prompt.
+   - When the **TUI** receives `user_message` and is not in an active user turn, it outputs the remote prompt using bold gold prompt styling: `❯ {text}`. The interactive prompt session is wrapped in prompt-toolkit's `patch_stdout()` to avoid console corruption during background writes.
+
+### 9.3 Unified Server Lifecycle Daemon Control
+The CLI supports uvicorn background daemon controls tracking active server states via a local `data/server.pid` file:
+- `jarvis server start`: Spawns uvicorn independently via `start_new_session=True` and registers the PID and port.
+- `jarvis server stop`: Gracefully terminates uvicorn and its process group via SIGTERM (escalating to SIGKILL if necessary), clearing the PID file.
+- `jarvis server status`: Validates uvicorn responsiveness and returns the active PID and port.
+
