@@ -240,3 +240,60 @@ RuntimeError: All Stark Core Matrix models failed. Last exception:
 2026-06-15 03:02:39,370 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: stepfun-ai/step-3.7-flash
 2026-06-15 03:02:46,516 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
 2026-06-15 03:02:46,517 - jarvis.evolution - INFO - Subconscious // P.L.A.T.O. Soul Core evolved successfully.
+2026-06-15 03:02:48,191 - jarvis.sync - INFO - GitHub Sync // Sync complete, remote URL cleaned.
+2026-06-17 03:00:03,055 - jarvis.evolution - INFO - Subconscious Evolution // Starting nightly cycle...
+2026-06-17 03:00:03,165 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: moonshotai/kimi-k2.6
+2026-06-17 03:00:18,181 - jarvis.agent - WARNING - Stark Core Matrix // Model moonshotai/kimi-k2.6 failed: . Rotating...
+2026-06-17 03:00:18,186 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-17 03:00:20,455 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-17 03:00:20,463 - jarvis.evolution - INFO - Subconscious // Researched Saint: St. Albert Chmielowski
+2026-06-17 03:00:20,466 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: moonshotai/kimi-k2.6
+2026-06-17 03:00:35,481 - jarvis.agent - WARNING - Stark Core Matrix // Model moonshotai/kimi-k2.6 failed: . Rotating...
+2026-06-17 03:00:35,487 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-17 03:00:50,502 - jarvis.agent - WARNING - Stark Core Matrix // Model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-17 03:00:50,502 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-17 03:01:05,517 - jarvis.agent - WARNING - Stark Core Matrix // Model deepseek-ai/deepseek-v4-pro failed: . Rotating...
+2026-06-17 03:01:05,518 - jarvis.evolution - ERROR - Dream generation failed
+Traceback (most recent call last):
+  File "/home/shaun/jarvis/src/evolution/subconscious.py", line 166, in run_evolution
+    dream_resp = await client.get_response(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_tools.py", line 2442, in _get_response
+    await super_get_response(
+  File "/home/shaun/jarvis/src/jarvis/core/agent.py", line 203, in _get_response_with_fallback
+    raise RuntimeError(f"All Stark Core Matrix models failed. Last exception: {last_exception}")
+RuntimeError: All Stark Core Matrix models failed. Last exception: 
+2026-06-17 03:01:05,536 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-17 03:01:20,552 - jarvis.agent - WARNING - Stark Core Matrix // Model deepseek-ai/deepseek-v4-flash failed: . Rotating...
+2026-06-17 03:01:20,552 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: moonshotai/kimi-k2.6
+2026-06-17 03:01:35,567 - jarvis.agent - WARNING - Stark Core Matrix // Model moonshotai/kimi-k2.6 failed: . Rotating...
+2026-06-17 03:01:35,576 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: mistralai/mistral-large-3-675b-instruct-2512
+2026-06-17 03:01:50,590 - jarvis.agent - WARNING - Stark Core Matrix // Model mistralai/mistral-large-3-675b-instruct-2512 failed: . Rotating...
+2026-06-17 03:01:50,590 - jarvis.evolution - ERROR - Reflection failed
+Traceback (most recent call last):
+  File "/home/shaun/jarvis/src/evolution/subconscious.py", line 200, in run_evolution
+    reflect_resp = await client.get_response(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/shaun/agent-framework/python/packages/core/agent_framework/_tools.py", line 2442, in _get_response
+    await super_get_response(
+  File "/home/shaun/jarvis/src/jarvis/core/agent.py", line 203, in _get_response_with_fallback
+    raise RuntimeError(f"All Stark Core Matrix models failed. Last exception: {last_exception}")
+RuntimeError: All Stark Core Matrix models failed. Last exception: 
+2026-06-17 03:01:50,608 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: stepfun-ai/step-3.7-flash
+2026-06-17 03:01:57,329 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-17 03:01:57,333 - jarvis.evolution - INFO - Subconscious // J.A.R.V.I.S. Soul Core evolved successfully.
+2026-06-17 03:01:57,335 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-17 03:02:12,350 - jarvis.agent - WARNING - Stark Core Matrix // Model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-17 03:02:12,350 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-17 03:02:16,069 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-17 03:02:16,071 - jarvis.evolution - INFO - Subconscious // F.R.I.D.A.Y. Soul Core evolved successfully.
+2026-06-17 03:02:16,073 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: nvidia/nemotron-3-ultra-550b-a55b
+2026-06-17 03:02:31,089 - jarvis.agent - WARNING - Stark Core Matrix // Model nvidia/nemotron-3-ultra-550b-a55b failed: . Rotating...
+2026-06-17 03:02:31,089 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-17 03:02:38,395 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-17 03:02:38,396 - jarvis.evolution - INFO - Subconscious // H.O.M.E.R. Soul Core evolved successfully.
+2026-06-17 03:02:38,399 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: deepseek-ai/deepseek-v4-pro
+2026-06-17 03:02:53,415 - jarvis.agent - WARNING - Stark Core Matrix // Model deepseek-ai/deepseek-v4-pro failed: . Rotating...
+2026-06-17 03:02:53,415 - jarvis.agent - INFO - Stark Core Matrix // Attempting turn with model: deepseek-ai/deepseek-v4-flash
+2026-06-17 03:02:55,803 - httpx - INFO - HTTP Request: POST https://integrate.api.nvidia.com/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-17 03:02:55,805 - jarvis.evolution - INFO - Subconscious // P.L.A.T.O. Soul Core evolved successfully.
