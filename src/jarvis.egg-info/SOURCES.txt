@@ -8,11 +8,15 @@ src/jarvis.egg-info/dependency_links.txt
 src/jarvis.egg-info/requires.txt
 src/jarvis.egg-info/top_level.txt
 src/jarvis/core/agent.py
+src/jarvis/core/subagents.py
 src/jarvis/evolution/subconscious.py
 src/jarvis/memory/memory_manager.py
+src/jarvis/server/app.py
 src/jarvis/skills/skill_forge.py
 src/jarvis/sync/github_sync.py
 tests/test_computer_use.py
 tests/test_memory.py
+tests/test_server.py
+tests/test_subagents.py
 tests/test_web_research.py
 tests/test_webvision.py
