@@ -130,8 +130,11 @@ def forge_skill(
     """
     # 0. Check and install missing dependencies
     try:
+        LOCAL_IGNORE = {"agent_framework", "jarvis"}
         imported_modules = extract_imports(code)
         for mod in imported_modules:
+            if mod in LOCAL_IGNORE:
+                continue
             if not is_module_available(mod):
                 logger.info(f"Dependency '{mod}' is missing. Attempting autonomous installation...")
                 install_dependency(mod)
@@ -215,9 +218,10 @@ def forge_skill(
                     )
             except ModuleNotFoundError as e:
                 missing_mod = e.name
-                if missing_mod and attempt < max_retries - 1:
+                top_level_mod = missing_mod.split('.')[0] if missing_mod else None
+                if top_level_mod and top_level_mod not in {"agent_framework", "jarvis"} and attempt < max_retries - 1:
                     logger.info(f"ModuleNotFoundError: {missing_mod} not found during loading. Retrying installation...")
-                    if install_dependency(missing_mod):
+                    if install_dependency(top_level_mod):
                         continue
                 if backup_code is not None:
                     file_path.write_text(backup_code, encoding="utf-8")
