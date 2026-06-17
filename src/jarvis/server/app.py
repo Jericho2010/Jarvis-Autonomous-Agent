@@ -48,11 +48,14 @@ startup_lock = asyncio.Lock()
 initialized = False
 
 async def init_services():
-    global initialized
+    global initialized, memory
     async with startup_lock:
-        if not initialized:
+        current_env_path = os.environ.get("JARVIS_DB_PATH", "/home/shaun/jarvis/data/jarvis.db")
+        if not initialized or str(memory.db_path) != current_env_path:
+            memory = MemoryManager(Path(current_env_path))
             await memory.init_db()
             initialized = True
+
 
 def check_system_dependencies():
     import shutil
