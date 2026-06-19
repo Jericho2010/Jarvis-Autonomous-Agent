@@ -7,6 +7,7 @@ import tempfile
 import wave
 from typing import List, Optional, Set
 
+from jarvis.config.nvidia import get_nvidia_api_key, nvidia_api_key_problem
 from jarvis.config.voice import (
     ASR_SAMPLE_RATE_HZ,
     BUTLER_LANGUAGE,
@@ -46,6 +47,9 @@ def clean_text_for_speech(text: str) -> str:
     cleaned = re.sub(r"\*\*([^*]+)\*\*", r"\1", cleaned)
     cleaned = re.sub(r"\*([^*]+)\*", r"\1", cleaned)
     cleaned = re.sub(r"#{1,6}\s+", "", cleaned)
+    cleaned = re.sub(r"\^{{[^}]*}}", "", cleaned)
+    cleaned = re.sub(r"execute_bash\{[^}]*\}", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bespeak\b[^\n.]*", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
 
     if len(cleaned) > MAX_TTS_CHARS:
@@ -183,15 +187,16 @@ class NIMSpeechClient:
     """NVIDIA NIM hosted speech client (Magpie TTS + Nemotron ASR via Riva gRPC)."""
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("NVIDIA_API_KEY", "")
+        self.api_key = api_key or get_nvidia_api_key()
         self._tts_service = None
         self._asr_service = None
         self._available_voices: Optional[Set[str]] = None
         self.resolved_voice: Optional[str] = None
         self._init_error: Optional[str] = None
 
-        if not self.api_key:
-            self._init_error = "NVIDIA_API_KEY is not configured"
+        key_problem = nvidia_api_key_problem(self.api_key)
+        if key_problem:
+            self._init_error = key_problem
             return
 
         try:

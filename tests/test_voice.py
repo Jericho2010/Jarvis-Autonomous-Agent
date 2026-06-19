@@ -19,7 +19,12 @@ class TestCleanTextForSpeech:
         text = "Hello Sir.\n<think>\ninternal\n</think>\nGood day."
         assert clean_text_for_speech(text) == "Hello Sir. Good day."
 
-    def test_strips_markdown(self):
+    def test_strips_tool_invocation_garbage(self):
+        text = '^{{execute_bash{"command": "echo hello | espeak"}}}'
+        cleaned = clean_text_for_speech(text)
+        assert "execute_bash" not in cleaned
+        assert "espeak" not in cleaned
+
         text = "**Bold** and `code` and # heading"
         cleaned = clean_text_for_speech(text)
         assert "**" not in cleaned
@@ -170,4 +175,5 @@ def test_nim_speech_client_missing_api_key():
     with patch.dict(os.environ, {"NVIDIA_API_KEY": ""}, clear=False):
         client = NIMSpeechClient(api_key="")
         assert client.is_available is False
-        assert client.init_error == "NVIDIA_API_KEY is not configured"
+        assert client.init_error is not None
+        assert "NVIDIA_API_KEY" in client.init_error
