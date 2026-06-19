@@ -21,6 +21,7 @@ import { ChatStream } from './components/ChatStream';
 import { ConsoleHUD } from './components/ConsoleHUD';
 import { RetinalHUD } from './components/RetinalHUD';
 import { FlowHUD } from './components/FlowHUD';
+import { useVoiceMode } from './hooks/useVoiceMode';
 
 import { 
   Bot, 
@@ -56,6 +57,9 @@ export default function App() {
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   
   const eventSourceRef = useRef<EventSource | null>(null);
+  const voice = useVoiceMode();
+  const speakTextRef = useRef(voice.speakText);
+  speakTextRef.current = voice.speakText;
 
   // Subagents Status Matrix
   const [subagents, setSubagents] = useState<SubagentStatus[]>([
@@ -232,6 +236,12 @@ export default function App() {
         listSessions().then(setSessions);
         setLogs(prev => [...prev, `\x1b[36m⬡ SESSION TITLE SET TO: ${title}\x1b[0m`]);
 
+      } else if (type === 'voice_ready') {
+        const text = data.text || '';
+        if (text) {
+          void speakTextRef.current(text);
+        }
+
       } else if (type === 'turn_complete') {
         // Construct final message
         let finalContent = '';
@@ -326,7 +336,8 @@ export default function App() {
           '  ▪ `/model <index|name|house_party>` - Set primary routing model',
           '  ▪ `/subagents` - Display cognitive subagent directory',
           '  ▪ `/tasks` - Display implementation tasks checklist',
-          '  ▪ `/skills` - List all loaded skill modules'
+          '  ▪ `/skills` - List all loaded skill modules',
+          '  ▪ `/voicemode` - Toggle spoken butler voice (`/voicemode on|off`)'
         ];
         setMessages(prev => [...prev, {
           role: 'assistant',
@@ -433,6 +444,60 @@ export default function App() {
           setMessages(prev => [...prev, {
             role: 'assistant',
             content: `❌ Connection error.`,
+            timestamp: Date.now()
+          }]);
+        }
+        return;
+      }
+
+      if (base === '/voicemode') {
+        try {
+          if (parts.length < 2) {
+            const status = await voice.refreshStatus();
+            const lines = [
+              '### Voice Mode Status',
+              `  ▪ **State:** ${status?.enabled ? 'ON' : 'OFF'}`,
+              `  ▪ **Voice:** ${status?.voice || 'unresolved'} (${status?.gender || 'unknown'})`,
+              `  ▪ **TTS:** ${status?.tts_available ? 'available' : 'unavailable'}`,
+              `  ▪ **STT:** ${status?.stt_available ? 'available' : 'unavailable'}`,
+            ];
+            if (status?.persona_warning) {
+              lines.push(`  ▪ **Warning:** ${status.persona_warning}`);
+            }
+            lines.push('\nUsage: `/voicemode on|off`');
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: lines.join('\n'),
+              timestamp: Date.now()
+            }]);
+            return;
+          }
+
+          const arg = parts[1].trim().toLowerCase();
+          let enabled: boolean | null = null;
+          if (['on', 'true', '1', 'yes', 'enable'].includes(arg)) enabled = true;
+          if (['off', 'false', '0', 'no', 'disable'].includes(arg)) enabled = false;
+          if (enabled === null) {
+            setMessages(prev => [...prev, {
+              role: 'assistant',
+              content: 'Usage: `/voicemode on|off`',
+              timestamp: Date.now()
+            }]);
+            return;
+          }
+
+          await voice.toggleVoiceMode(enabled);
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: enabled
+              ? '✓ Voice mode enabled. Jarvis will speak in a male English butler voice. Hold the microphone button to dictate.'
+              : '✓ Voice mode disabled.',
+            timestamp: Date.now()
+          }]);
+        } catch (e) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `❌ Failed to update voice mode: ${e instanceof Error ? e.message : 'Unknown error'}`,
             timestamp: Date.now()
           }]);
         }
@@ -618,6 +683,16 @@ export default function App() {
               onSendMessage={handleSendMessage}
               onClearSession={handleClearSession}
               onNewSession={handleNewSession}
+              voiceEnabled={voice.voiceEnabled}
+              voiceLabel={voice.voiceLabel}
+              isRecording={voice.isRecording}
+              isTranscribing={voice.isTranscribing}
+              isSpeaking={voice.isSpeaking}
+              onStartRecording={voice.startRecording}
+              onStopRecording={voice.stopRecording}
+              onToggleVoiceMode={async () => {
+                await voice.toggleVoiceMode();
+              }}
             />
           )}
           {activeTab === 'network' && <FlowHUD subagents={subagents} />}
