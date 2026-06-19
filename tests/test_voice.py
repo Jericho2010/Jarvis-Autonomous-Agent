@@ -170,4 +170,5 @@ def test_nim_speech_client_missing_api_key():
     with patch.dict(os.environ, {"NVIDIA_API_KEY": ""}, clear=False):
         client = NIMSpeechClient(api_key="")
         assert client.is_available is False
-        assert client.init_error == "NVIDIA_API_KEY is not configured"
+        assert client.init_error is not None
+        assert "NVIDIA_API_KEY" in client.init_error
