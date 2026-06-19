@@ -690,6 +690,9 @@ export default function App() {
               isSpeaking={voice.isSpeaking}
               onStartRecording={voice.startRecording}
               onStopRecording={voice.stopRecording}
+              onToggleVoiceMode={async () => {
+                await voice.toggleVoiceMode();
+              }}
             />
           )}
           {activeTab === 'network' && <FlowHUD subagents={subagents} />}

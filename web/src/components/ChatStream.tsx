@@ -19,6 +19,7 @@ interface ChatStreamProps {
   isSpeaking?: boolean;
   onStartRecording?: () => void;
   onStopRecording?: () => Promise<string | null>;
+  onToggleVoiceMode?: () => Promise<void>;
 }
 
 export const ChatStream: React.FC<ChatStreamProps> = ({
@@ -38,6 +39,7 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
   isSpeaking = false,
   onStartRecording,
   onStopRecording,
+  onToggleVoiceMode,
 }) => {
   const [input, setInput] = useState('');
   const [showCommands, setShowCommands] = useState(false);
@@ -49,13 +51,13 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
   const SLASH_COMMANDS = [
     { cmd: '/help', desc: 'Show help manual' },
     { cmd: '/new', desc: 'Start a fresh dialogue session' },
+    { cmd: '/voicemode', desc: 'Toggle spoken butler voice (/voicemode on|off)' },
     { cmd: '/clear', desc: 'Clear conversation history' },
     { cmd: '/tasks', desc: 'Show active implementation tasks' },
     { cmd: '/skills', desc: 'List loaded skill modules' },
     { cmd: '/models', desc: 'List available cognitive models' },
     { cmd: '/model', desc: 'Set primary routing model (e.g. /model 2)' },
     { cmd: '/subagents', desc: 'Display details of cognitive subagents' },
-    { cmd: '/voicemode', desc: 'Toggle spoken butler voice (/voicemode on|off)' }
   ];
 
   useEffect(() => {
@@ -123,7 +125,13 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
   };
 
   const handleMicPointerDown = async () => {
-    if (!voiceEnabled || !onStartRecording) return;
+    if (!voiceEnabled) {
+      if (onToggleVoiceMode) {
+        await onToggleVoiceMode();
+      }
+      return;
+    }
+    if (!onStartRecording) return;
     await onStartRecording();
   };
 
@@ -272,13 +280,18 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
         </div>
       )}
 
-      {voiceEnabled && (
+      {voiceEnabled ? (
         <div className="bg-stark-gold/10 border-b border-stark-gold/20 px-4 py-1.5 flex items-center gap-2 font-mono text-[10px] text-stark-gold uppercase tracking-widest">
           <Volume2 className={`w-3.5 h-3.5 ${isSpeaking ? 'animate-pulse' : ''}`} />
           <span>Voice Mode · Male Butler · {voiceLabel}</span>
           {isRecording && <span className="text-stark-red animate-pulse">● Recording</span>}
           {isTranscribing && <span className="text-stark-cyan animate-pulse">Transcribing…</span>}
           {isSpeaking && <span className="text-stark-cyan animate-pulse">Speaking…</span>}
+        </div>
+      ) : (
+        <div className="bg-white/5 border-b border-white/10 px-4 py-1.5 flex items-center gap-2 font-mono text-[10px] text-white/40 uppercase tracking-widest">
+          <Mic className="w-3.5 h-3.5" />
+          <span>Voice mode off — click the mic or type /voicemode on</span>
         </div>
       )}
 
@@ -419,29 +432,42 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
           >
             <Paperclip className="w-4.5 h-4.5" />
           </button>
+          <button
+            type="button"
+            onClick={() => onToggleVoiceMode?.()}
+            disabled={!sessionId}
+            className={`p-2 rounded-md focus:outline-none transition-all shrink-0 ${
+              voiceEnabled
+                ? 'bg-stark-gold/15 text-stark-gold border border-stark-gold/30'
+                : 'text-white/40 hover:text-stark-gold hover:bg-white/5'
+            }`}
+            title={voiceEnabled ? 'Voice mode on — click to disable' : 'Enable voice mode (butler TTS + dictation)'}
+          >
+            <Volume2 className="w-4.5 h-4.5" />
+          </button>
+          <button
+            type="button"
+            onPointerDown={handleMicPointerDown}
+            onPointerUp={handleMicPointerUp}
+            onPointerLeave={handleMicPointerUp}
+            disabled={isTranscribing || uploading || !sessionId}
+            className={`p-2 rounded-md focus:outline-none transition-all shrink-0 ${
+              isRecording
+                ? 'bg-stark-red/20 text-stark-red animate-pulse'
+                : voiceEnabled
+                  ? 'text-stark-gold hover:bg-stark-gold/10'
+                  : 'text-white/30 hover:text-stark-gold hover:bg-white/5'
+            }`}
+            title={voiceEnabled ? 'Hold to dictate' : 'Click to enable voice mode, then hold to dictate'}
+          >
+            {isRecording ? <MicOff className="w-4.5 h-4.5" /> : <Mic className="w-4.5 h-4.5" />}
+          </button>
           <input 
             type="file" 
             ref={fileInputRef} 
             onChange={handleFileChange} 
             className="hidden" 
           />
-          {voiceEnabled && (
-            <button
-              type="button"
-              onPointerDown={handleMicPointerDown}
-              onPointerUp={handleMicPointerUp}
-              onPointerLeave={handleMicPointerUp}
-              disabled={isTranscribing || uploading || !sessionId}
-              className={`p-2 rounded-md focus:outline-none transition-all shrink-0 ${
-                isRecording
-                  ? 'bg-stark-red/20 text-stark-red animate-pulse'
-                  : 'text-white/40 hover:text-stark-gold hover:bg-white/5'
-              }`}
-              title="Hold to dictate"
-            >
-              {isRecording ? <MicOff className="w-4.5 h-4.5" /> : <Mic className="w-4.5 h-4.5" />}
-            </button>
-          )}
           <div className="relative flex-1 flex items-center">
             <input
               type="text"
