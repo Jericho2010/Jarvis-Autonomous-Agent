@@ -12,6 +12,14 @@ fi
 source .venv/bin/activate
 export PYTHONPATH=src:$PYTHONPATH
 
+# Install/update Python deps (e.g. nvidia-riva-client for voice mode)
+echo "JARVIS // Syncing Python dependencies..."
+if command -v uv >/dev/null 2>&1; then
+    uv pip install -e . -q
+else
+    pip install -e . -q
+fi
+
 # web/dist is not committed — always rebuild so git pull / merge changes appear in the HUD
 if command -v npm >/dev/null 2>&1 && [ -d web ] && [ -f web/package.json ]; then
     echo "JARVIS // Building Web HUD..."
