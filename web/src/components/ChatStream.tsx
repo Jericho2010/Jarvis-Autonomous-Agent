@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Terminal, HelpCircle, Layers, Trash2, ArrowUpRight, Cpu, Paperclip, X } from 'lucide-react';
+import { Send, Terminal, HelpCircle, Layers, Trash2, ArrowUpRight, Cpu, Paperclip, X, Mic, MicOff, Volume2 } from 'lucide-react';
 import { ChatMessage, uploadSessionFile } from '../lib/api';
 
 interface ChatStreamProps {
@@ -12,6 +12,13 @@ interface ChatStreamProps {
   onSendMessage: (message: string, files?: { id: string, filename: string, bytes: number }[]) => void;
   onClearSession: () => void;
   onNewSession: () => void;
+  voiceEnabled?: boolean;
+  voiceLabel?: string;
+  isRecording?: boolean;
+  isTranscribing?: boolean;
+  isSpeaking?: boolean;
+  onStartRecording?: () => void;
+  onStopRecording?: () => Promise<string | null>;
 }
 
 export const ChatStream: React.FC<ChatStreamProps> = ({
@@ -24,6 +31,13 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
   onSendMessage,
   onClearSession,
   onNewSession,
+  voiceEnabled = false,
+  voiceLabel = 'Male Butler',
+  isRecording = false,
+  isTranscribing = false,
+  isSpeaking = false,
+  onStartRecording,
+  onStopRecording,
 }) => {
   const [input, setInput] = useState('');
   const [showCommands, setShowCommands] = useState(false);
@@ -40,7 +54,8 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
     { cmd: '/skills', desc: 'List loaded skill modules' },
     { cmd: '/models', desc: 'List available cognitive models' },
     { cmd: '/model', desc: 'Set primary routing model (e.g. /model 2)' },
-    { cmd: '/subagents', desc: 'Display details of cognitive subagents' }
+    { cmd: '/subagents', desc: 'Display details of cognitive subagents' },
+    { cmd: '/voicemode', desc: 'Toggle spoken butler voice (/voicemode on|off)' }
   ];
 
   useEffect(() => {
@@ -105,6 +120,19 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
   const selectCommand = (cmd: string) => {
     setInput(cmd);
     setShowCommands(false);
+  };
+
+  const handleMicPointerDown = async () => {
+    if (!voiceEnabled || !onStartRecording) return;
+    await onStartRecording();
+  };
+
+  const handleMicPointerUp = async () => {
+    if (!voiceEnabled || !onStopRecording || !isRecording) return;
+    const transcript = await onStopRecording();
+    if (transcript) {
+      setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+    }
   };
 
   const parseMessageContent = (text: string) => {
@@ -241,6 +269,16 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
               {JSON.stringify(activeToolArgs)}
             </span>
           )}
+        </div>
+      )}
+
+      {voiceEnabled && (
+        <div className="bg-stark-gold/10 border-b border-stark-gold/20 px-4 py-1.5 flex items-center gap-2 font-mono text-[10px] text-stark-gold uppercase tracking-widest">
+          <Volume2 className={`w-3.5 h-3.5 ${isSpeaking ? 'animate-pulse' : ''}`} />
+          <span>Voice Mode · Male Butler · {voiceLabel}</span>
+          {isRecording && <span className="text-stark-red animate-pulse">● Recording</span>}
+          {isTranscribing && <span className="text-stark-cyan animate-pulse">Transcribing…</span>}
+          {isSpeaking && <span className="text-stark-cyan animate-pulse">Speaking…</span>}
         </div>
       )}
 
@@ -387,6 +425,23 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
             onChange={handleFileChange} 
             className="hidden" 
           />
+          {voiceEnabled && (
+            <button
+              type="button"
+              onPointerDown={handleMicPointerDown}
+              onPointerUp={handleMicPointerUp}
+              onPointerLeave={handleMicPointerUp}
+              disabled={isTranscribing || uploading || !sessionId}
+              className={`p-2 rounded-md focus:outline-none transition-all shrink-0 ${
+                isRecording
+                  ? 'bg-stark-red/20 text-stark-red animate-pulse'
+                  : 'text-white/40 hover:text-stark-gold hover:bg-white/5'
+              }`}
+              title="Hold to dictate"
+            >
+              {isRecording ? <MicOff className="w-4.5 h-4.5" /> : <Mic className="w-4.5 h-4.5" />}
+            </button>
+          )}
           <div className="relative flex-1 flex items-center">
             <input
               type="text"

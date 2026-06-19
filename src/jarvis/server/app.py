@@ -28,6 +28,8 @@ from jarvis.memory.memory_manager import MemoryManager
 from jarvis.core.agent import create_jarvis_agent, DEFAULT_SYSTEM_PROMPT
 from jarvis.skills.skill_forge import load_skills_from_dir, forge_skill
 from jarvis.core.subagents import current_session_id, session_broadcasters, broadcast_event, sys_session_send
+from jarvis.config.voice import VOICE_MODE_PREF_KEY
+from jarvis.voice.nim_speech import clean_text_for_speech, get_speech_client
 
 # Configure logging
 logging.basicConfig(
@@ -100,6 +102,12 @@ class ChatRequest(BaseModel):
 
 class AgentSwitchRequest(BaseModel):
     agent_id: str
+
+class VoiceModeRequest(BaseModel):
+    enabled: bool
+
+class VoiceTTSRequest(BaseModel):
+    text: str
 
 @app.get("/v1/sessions")
 async def list_sessions():
@@ -347,6 +355,16 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
         
         if accumulated_text.strip():
             await memory.add_message(session_id, "assistant", accumulated_text)
+
+        voice_prefs = await memory.get_preferences()
+        if voice_prefs.get(VOICE_MODE_PREF_KEY):
+            spoken_text = clean_text_for_speech(accumulated_text)
+            if spoken_text:
+                await broadcast_event(
+                    session_id,
+                    "voice_ready",
+                    {"text": spoken_text},
+                )
             
         await broadcast_event(session_id, "turn_complete", {"session_id": session_id})
         logger.info(f"Session {session_id} turn completed successfully.")
@@ -589,6 +607,90 @@ async def switch_session_agent(session_id: str, req: AgentSwitchRequest):
     except Exception as e:
         logger.exception("Failed to switch session agent")
         raise HTTPException(status_code=500, detail=str(e))
+
+async def _voice_mode_enabled() -> bool:
+    prefs = await memory.get_preferences()
+    value = prefs.get(VOICE_MODE_PREF_KEY, False)
+    if isinstance(value, str):
+        return value.lower() in ("true", "1", "yes", "on")
+    return bool(value)
+
+@app.get("/v1/voice/status")
+async def get_voice_status():
+    await init_services()
+    client = get_speech_client()
+    enabled = await _voice_mode_enabled()
+    voice = None
+    language = None
+    gender = None
+    warning = None
+    if client.tts_available:
+        try:
+            voice = client.ensure_voice()
+            language = "en-US"
+            gender = client.voice_gender()
+            warning = client.persona_mismatch_warning()
+        except Exception as exc:
+            logger.warning("Voice status resolution failed: %s", exc)
+    return {
+        "enabled": enabled,
+        "voice": voice,
+        "language": language,
+        "gender": gender,
+        "persona_warning": warning,
+        "tts_available": client.tts_available,
+        "stt_available": client.stt_available,
+        "error": client.init_error,
+    }
+
+@app.post("/v1/voice/mode")
+async def set_voice_mode(req: VoiceModeRequest):
+    await init_services()
+    await memory.upsert_preference(VOICE_MODE_PREF_KEY, req.enabled)
+    client = get_speech_client()
+    if req.enabled and not client.is_available:
+        detail = client.init_error or "NVIDIA NIM speech services unavailable"
+        raise HTTPException(status_code=503, detail=detail)
+    return {"enabled": req.enabled}
+
+@app.post("/v1/voice/tts")
+async def synthesize_voice(req: VoiceTTSRequest):
+    await init_services()
+    client = get_speech_client()
+    if not client.tts_available:
+        raise HTTPException(
+            status_code=503,
+            detail=client.init_error or "TTS service unavailable",
+        )
+    try:
+        wav_bytes = client.synthesize(req.text)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("TTS synthesis failed")
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    from fastapi.responses import Response
+    return Response(content=wav_bytes, media_type="audio/wav")
+
+@app.post("/v1/voice/stt")
+async def transcribe_voice(audio: UploadFile = File(...)):
+    await init_services()
+    client = get_speech_client()
+    if not client.stt_available:
+        raise HTTPException(
+            status_code=503,
+            detail=client.init_error or "STT service unavailable",
+        )
+    try:
+        audio_bytes = await audio.read()
+        transcript = client.transcribe(audio_bytes, audio.content_type)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.exception("STT transcription failed")
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return {"text": transcript}
 
 def import_json_str(data: dict) -> str:
     import json

@@ -161,6 +161,82 @@ export async function switchSessionAgent(sessionId: string, agentId: string): Pr
   return res.ok;
 }
 
+export interface VoiceStatus {
+  enabled: boolean;
+  voice: string | null;
+  language: string | null;
+  gender: string | null;
+  persona_warning?: string | null;
+  tts_available: boolean;
+  stt_available: boolean;
+  error?: string | null;
+}
+
+export async function getVoiceStatus(): Promise<VoiceStatus | null> {
+  try {
+    const baseUrl = await getApiUrl();
+    const res = await fetch(`${baseUrl}/v1/voice/status`);
+    if (!res.ok) throw new Error('Failed to fetch voice status');
+    return await res.json();
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+}
+
+export async function setVoiceMode(enabled: boolean): Promise<{ enabled: boolean } | null> {
+  try {
+    const baseUrl = await getApiUrl();
+    const res = await fetch(`${baseUrl}/v1/voice/mode`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+    if (!res.ok) {
+      const detail = await res.text();
+      throw new Error(detail || 'Failed to update voice mode');
+    }
+    return await res.json();
+  } catch (e) {
+    console.error(e);
+    throw e;
+  }
+}
+
+export async function synthesizeSpeech(text: string): Promise<Blob | null> {
+  try {
+    const baseUrl = await getApiUrl();
+    const res = await fetch(`${baseUrl}/v1/voice/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) throw new Error('Failed to synthesize speech');
+    return await res.blob();
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+}
+
+export async function transcribeAudio(blob: Blob, mimeType = 'audio/webm'): Promise<string | null> {
+  try {
+    const baseUrl = await getApiUrl();
+    const formData = new FormData();
+    formData.append('audio', blob, 'recording.webm');
+    const res = await fetch(`${baseUrl}/v1/voice/stt`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) throw new Error('Failed to transcribe audio');
+    const data = await res.json();
+    return data.text || '';
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+}
+
 export async function getSessionStream(
   sessionId: string, 
   onEvent: (event: string, data: any) => void
@@ -176,7 +252,8 @@ export async function getSessionStream(
     'turn_complete', 
     'user_message',
     'agent_changed',
-    'title_changed'
+    'title_changed',
+    'voice_ready'
   ];
   
   eventTypes.forEach(type => {

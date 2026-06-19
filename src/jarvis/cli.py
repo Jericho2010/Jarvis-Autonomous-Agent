@@ -81,6 +81,7 @@ SLASH_COMMANDS = {
     "/models": "List available cognitive models",
     "/model": "Set primary model: /model <name|index>",
     "/subagents": "List cognitive sub-agent profiles",
+    "/voicemode": "Toggle spoken butler voice: /voicemode [on|off]",
     "/clear": "Clear the screen",
     "/exit": "Exit Jarvis TUI"
 }
@@ -864,6 +865,60 @@ class JarvisTUI:
                     console.print(f"[bold #FFD700]✓ Active agent set to: {agent_id.upper()}[/bold #FFD700]\n")
                 except Exception as e:
                     console.print(f"[bold red]❌ Failed to switch agent:[/] {e}\n")
+            return True
+        elif base == "/voicemode":
+            async with httpx.AsyncClient() as client:
+                try:
+                    if len(parts) < 2:
+                        res = await client.get(f"http://127.0.0.1:{self.port}/v1/voice/status", timeout=5.0)
+                        res.raise_for_status()
+                        status = res.json()
+                        state = "ON" if status.get("enabled") else "OFF"
+                        voice = status.get("voice") or "unresolved"
+                        gender = status.get("gender") or "unknown"
+                        lines = [
+                            f"[bold]Voice Mode:[/bold] {state}",
+                            f"[bold]Voice:[/bold] {voice} ({gender})",
+                            f"[bold]TTS:[/bold] {'available' if status.get('tts_available') else 'unavailable'}",
+                            f"[bold]STT:[/bold] {'available' if status.get('stt_available') else 'unavailable'}",
+                        ]
+                        warning = status.get("persona_warning")
+                        if warning:
+                            lines.append(f"[bold #E63946]Warning:[/bold #E63946] {warning}")
+                        if status.get("error"):
+                            lines.append(f"[dim]Error: {status['error']}[/dim]")
+                        lines.append("\n[dim]Usage: /voicemode on|off[/dim]")
+                        console.print(Panel("\n".join(lines), title="Voice Mode Status", border_style="#FFD700"))
+                        return True
+
+                    arg = parts[1].strip().lower()
+                    if arg in ("on", "true", "1", "yes", "enable"):
+                        enabled = True
+                    elif arg in ("off", "false", "0", "no", "disable"):
+                        enabled = False
+                    else:
+                        console.print("[bold #E63946]Usage: /voicemode [on|off][/bold #E63946]\n")
+                        return True
+
+                    res = await client.post(
+                        f"http://127.0.0.1:{self.port}/v1/voice/mode",
+                        json={"enabled": enabled},
+                        timeout=5.0,
+                    )
+                    if res.status_code == 503:
+                        console.print(f"[bold #E63946]Voice services unavailable:[/] {res.text}\n")
+                        return True
+                    res.raise_for_status()
+                    if enabled:
+                        console.print(
+                            "[bold #FFD700]✓ Voice mode enabled.[/] "
+                            "Jarvis will speak in a male English butler voice; "
+                            "use the Web HUD microphone to dictate.\n"
+                        )
+                    else:
+                        console.print("[bold #FFD700]✓ Voice mode disabled.[/]\n")
+                except Exception as e:
+                    console.print(f"[bold red]❌ Failed to update voice mode:[/] {e}\n")
             return True
         elif base == "/exit":
             self.shutdown()
