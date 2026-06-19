@@ -31,7 +31,7 @@ from jarvis.memory.memory_manager import MemoryManager
 from jarvis.core.agent import create_jarvis_agent, DEFAULT_SYSTEM_PROMPT
 from jarvis.skills.skill_forge import load_skills_from_dir, forge_skill
 from jarvis.core.subagents import current_session_id, session_broadcasters, broadcast_event, sys_session_send
-from jarvis.config.voice import VOICE_MODE_PREF_KEY
+from jarvis.config.voice import VOICE_MODE_PREF_KEY, VOICE_MODE_SYSTEM_APPEND
 from jarvis.voice.nim_speech import clean_text_for_speech, get_speech_client
 
 load_dotenv(get_env_file())
@@ -253,6 +253,8 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
         if soul_body:
             custom_instructions += f"\n\n# ACTIVE PERSONA PROFILE\n{soul_body}"
         custom_instructions += f"\n\n{profile}"
+        if await _voice_mode_enabled():
+            custom_instructions += f"\n\n{VOICE_MODE_SYSTEM_APPEND}"
         
         skills_tools = load_skills_from_dir(get_skills_dir())
         all_tools = [forge_skill, sys_session_send] + skills_tools

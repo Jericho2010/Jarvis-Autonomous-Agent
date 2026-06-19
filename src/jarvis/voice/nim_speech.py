@@ -47,6 +47,9 @@ def clean_text_for_speech(text: str) -> str:
     cleaned = re.sub(r"\*\*([^*]+)\*\*", r"\1", cleaned)
     cleaned = re.sub(r"\*([^*]+)\*", r"\1", cleaned)
     cleaned = re.sub(r"#{1,6}\s+", "", cleaned)
+    cleaned = re.sub(r"\^{{[^}]*}}", "", cleaned)
+    cleaned = re.sub(r"execute_bash\{[^}]*\}", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bespeak\b[^\n.]*", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
 
     if len(cleaned) > MAX_TTS_CHARS:

@@ -19,7 +19,12 @@ class TestCleanTextForSpeech:
         text = "Hello Sir.\n<think>\ninternal\n</think>\nGood day."
         assert clean_text_for_speech(text) == "Hello Sir. Good day."
 
-    def test_strips_markdown(self):
+    def test_strips_tool_invocation_garbage(self):
+        text = '^{{execute_bash{"command": "echo hello | espeak"}}}'
+        cleaned = clean_text_for_speech(text)
+        assert "execute_bash" not in cleaned
+        assert "espeak" not in cleaned
+
         text = "**Bold** and `code` and # heading"
         cleaned = clean_text_for_speech(text)
         assert "**" not in cleaned
