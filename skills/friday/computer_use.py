@@ -4,6 +4,7 @@ import logging
 import subprocess
 from typing import Optional
 from agent_framework import tool
+from jarvis.config.paths import get_webvision_dir, get_workspace_root
 
 logger = logging.getLogger("jarvis.skills.computer_use")
 
@@ -16,7 +17,7 @@ def stark_os_retinal_hud(filename: str = "retinal_capture.png") -> str:
     Returns:
         JSON report containing success state and file path.
     """
-    capture_dir = "/home/shaun/jarvis/webvision"
+    capture_dir = str(get_webvision_dir())
     os.makedirs(capture_dir, exist_ok=True)
     file_path = os.path.join(capture_dir, filename)
     
@@ -26,14 +27,14 @@ def stark_os_retinal_hud(filename: str = "retinal_capture.png") -> str:
             ["scrot", "-z", file_path],
             capture_output=True,
             text=True,
-            cwd="/home/shaun/jarvis"
+            cwd=str(get_workspace_root())
         )
         if res.returncode != 0:
             res = subprocess.run(
                 ["scrot", file_path],
                 capture_output=True,
                 text=True,
-                cwd="/home/shaun/jarvis"
+                cwd=str(get_workspace_root())
             )
         
         if res.returncode == 0:

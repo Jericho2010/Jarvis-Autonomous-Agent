@@ -4,6 +4,8 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
+from jarvis.config.paths import get_workspace_root
+
 logger = logging.getLogger("jarvis.sync")
 
 def get_current_repo_name() -> str:
@@ -13,7 +15,7 @@ def get_current_repo_name() -> str:
             ["git", "remote", "get-url", "origin"],
             capture_output=True,
             text=True,
-            cwd="/home/shaun/jarvis"
+            cwd=str(get_workspace_root())
         )
         if res.returncode == 0 and res.stdout.strip():
             url = res.stdout.strip()
@@ -36,7 +38,7 @@ def sync_workspace(saint_name: str) -> bool:
         print("⚠️ GITHUB_PERSONAL_ACCESS_TOKEN not set. Local commit only.")
         token = None
 
-    repo_root = Path("/home/shaun/jarvis")
+    repo_root = get_workspace_root()
     if not repo_root.exists():
         logger.error(f"GitHub Sync // Repo root {repo_root} does not exist.")
         return False

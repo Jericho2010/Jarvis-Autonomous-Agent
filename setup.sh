@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 echo "JARVIS // Bootstrapping virtual environment..."
 uv venv .venv
 source .venv/bin/activate
@@ -42,7 +45,7 @@ fi
 
 # Cron Setup
 echo "JARVIS // Configuring nightly subconscious cron job (3:00 AM)..."
-CRON_CMD="0 3 * * * cd /home/shaun/jarvis && /home/shaun/jarvis/.venv/bin/python3 src/evolution/subconscious.py >> /home/shaun/jarvis/data/subconscious_cron.log 2>&1"
+CRON_CMD="0 3 * * * cd $SCRIPT_DIR && $SCRIPT_DIR/.venv/bin/python3 src/evolution/subconscious.py >> $SCRIPT_DIR/data/subconscious_cron.log 2>&1"
 (crontab -l 2>/dev/null | grep -F -v "src/evolution/subconscious.py" ; echo "$CRON_CMD") | crontab -
 
 echo "JARVIS // Bootstrapping completed successfully!"
