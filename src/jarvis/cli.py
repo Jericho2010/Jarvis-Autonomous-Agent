@@ -447,6 +447,10 @@ class JarvisTUI:
                 self.external_server = True
                 logger.info(f"Connected to running J.A.R.V.I.S. daemon on port {self.port} (PID {pid})")
                 console.print(f"[bold green]✓ Connected to active J.A.R.V.I.S. server on port {self.port}.[/]")
+                console.print(
+                    "[bold #FFD700]⚠ If you just updated Jarvis (git pull/merge), restart the server:[/] "
+                    "[white]python3 -m jarvis.cli server stop[/] then run [white]./run.sh[/] again."
+                )
             else:
                 self.external_server = False
         else:

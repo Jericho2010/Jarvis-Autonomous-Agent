@@ -12,18 +12,19 @@ fi
 source .venv/bin/activate
 export PYTHONPATH=src:$PYTHONPATH
 
-# Rebuild Web HUD when sources are newer than the bundled dist (dist is not committed)
+# web/dist is not committed — always rebuild so git pull / merge changes appear in the HUD
 if command -v npm >/dev/null 2>&1 && [ -d web ] && [ -f web/package.json ]; then
-    NEED_BUILD=0
-    if [ ! -f web/dist/index.html ]; then
-        NEED_BUILD=1
-    elif find web/src -type f -newer web/dist/index.html -print -quit 2>/dev/null | grep -q .; then
-        NEED_BUILD=1
-    fi
-    if [ "$NEED_BUILD" -eq 1 ]; then
-        echo "JARVIS // Building Web HUD..."
-        (cd web && npm install --silent && npm run build)
-    fi
+    echo "JARVIS // Building Web HUD..."
+    (cd web && npm install --silent && npm run build)
+else
+    echo "JARVIS // WARNING: npm not found — Web HUD may be stale. Install Node.js or run: (cd web && npm run build)"
+fi
+
+# Stop any lingering API server so backend + static UI reload after updates
+if [ -f data/server.pid ]; then
+    echo "JARVIS // Restarting API server to load latest code..."
+    python3 -m jarvis.cli server stop 2>/dev/null || true
+    sleep 1
 fi
 
 python3 -m jarvis.cli "$@"
