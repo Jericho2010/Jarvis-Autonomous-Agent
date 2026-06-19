@@ -27,8 +27,15 @@ import contextlib
 import warnings
 from prompt_toolkit.patch_stdout import patch_stdout
 
+from jarvis.config.paths import (
+    get_data_dir,
+    get_env_file,
+    get_skills_dir,
+    get_workspace_root,
+)
+
 # Load env from root
-load_dotenv(Path("/home/shaun/jarvis/.env"))
+load_dotenv(get_env_file())
 
 def check_system_dependencies():
     import shutil
@@ -58,7 +65,7 @@ def _load_skills_silent(path):
 console = Console()
 raw_console = Console(file=sys.__stdout__)
 logging.basicConfig(
-    filename="/home/shaun/jarvis/data/jarvis_client.log",
+    filename=str(get_data_dir() / "jarvis_client.log"),
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
@@ -203,7 +210,7 @@ def find_free_port(start_port: int) -> int:
         port += 1
     return start_port
 
-PID_FILE = Path("/home/shaun/jarvis/data/server.pid")
+PID_FILE = get_data_dir() / "server.pid"
 
 def is_pid_alive(pid: int) -> bool:
     if pid <= 0:
@@ -255,7 +262,7 @@ def start_server_daemon(port: int) -> bool:
             return False
 
     console.print(f"[bold #00F0FF]⬡ Starting J.A.R.V.I.S. server daemon on port {port}...[/]")
-    log_dir = Path("/home/shaun/jarvis/data")
+    log_dir = get_data_dir()
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = open(log_dir / "server.log", "a")
     
@@ -459,7 +466,7 @@ class JarvisTUI:
                 console.print(f"[bold #FFD700]⚠ Port {old_port} occupied by another service. Scanning for free port... Found {self.port}.[/]")
                 
             console.print(f"[bold #00F0FF]⬡ Background API Server is offline. Starting service on port {self.port}...[/]")
-            log_dir = Path("/home/shaun/jarvis/data")
+            log_dir = get_data_dir()
             log_dir.mkdir(parents=True, exist_ok=True)
             log_file = open(log_dir / "server.log", "a")
             
@@ -692,7 +699,7 @@ class JarvisTUI:
             await print_tasks()
             return True
         elif base == "/skills":
-            skills_tools = load_skills_from_dir(Path("/home/shaun/jarvis/skills"))
+            skills_tools = load_skills_from_dir(get_skills_dir())
             lines = ["[bold]Loaded Skill Modules:[/bold]"]
             for s in skills_tools:
                 lines.append(f"  [bold cyan]▪[/] {s.name} - {s.description}")
@@ -866,7 +873,7 @@ class JarvisTUI:
     async def run_loop(self):
         self.print_splash()
         
-        history_path = Path("/home/shaun/jarvis/data/pt_history.txt")
+        history_path = get_data_dir() / "pt_history.txt"
         history_path.parent.mkdir(parents=True, exist_ok=True)
         
         from prompt_toolkit.completion import merge_completers

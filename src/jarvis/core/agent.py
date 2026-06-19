@@ -1,6 +1,5 @@
 import os
 import logging
-import random
 import asyncio
 from typing import Any, AsyncIterable, Awaitable, Callable, Dict, List, Mapping, Optional, Sequence
 from pathlib import Path
@@ -16,14 +15,7 @@ from rich.panel import Panel
 logger = logging.getLogger("jarvis.agent")
 console = Console()
 
-NIM_MODEL_BASKET = [
-    "deepseek-ai/deepseek-v4-pro",
-    "deepseek-ai/deepseek-v4-flash",
-    "nvidia/nemotron-3-ultra-550b-a55b",
-    "moonshotai/kimi-k2.6",
-    "stepfun-ai/step-3.7-flash",
-    "mistralai/mistral-large-3-675b-instruct-2512"
-]
+from jarvis.config.models import NIM_MODEL_BASKET, select_failover_models
 
 def format_result(result: Any) -> str:
     if result is None:
@@ -171,15 +163,8 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
     ) -> ChatResponse:
         last_exception = None
         
-        basket_pool = list(self.model_basket)
-        active_models = []
-        if self.primary_model != "house_party" and self.primary_model in basket_pool:
-            active_models.append(self.primary_model)
-            basket_pool.remove(self.primary_model)
-            active_models.extend(random.sample(basket_pool, 2))
-        else:
-            active_models = random.sample(basket_pool, 3)
-            
+        active_models = select_failover_models(self.primary_model, list(self.model_basket))
+
         for model in active_models:
             try:
                 client = self._get_client(model)
@@ -210,15 +195,8 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
     ) -> AsyncIterable[ChatResponseUpdate]:
         last_exception = None
         
-        basket_pool = list(self.model_basket)
-        active_models = []
-        if self.primary_model != "house_party" and self.primary_model in basket_pool:
-            active_models.append(self.primary_model)
-            basket_pool.remove(self.primary_model)
-            active_models.extend(random.sample(basket_pool, 2))
-        else:
-            active_models = random.sample(basket_pool, 3)
-            
+        active_models = select_failover_models(self.primary_model, list(self.model_basket))
+
         for model in active_models:
             try:
                 client = self._get_client(model)

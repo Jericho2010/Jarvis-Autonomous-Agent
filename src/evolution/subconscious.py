@@ -9,11 +9,19 @@ from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 
+from jarvis.config.paths import (
+    get_data_dir,
+    get_db_path,
+    get_env_file,
+    get_skills_dir,
+    get_workspace_root,
+)
+
 # Load environment
-load_dotenv(Path("/home/shaun/jarvis/.env"))
+load_dotenv(get_env_file())
 
 # Configure paths
-sys.path.append("/home/shaun/jarvis/src")
+sys.path.insert(0, str(get_workspace_root() / "src"))
 
 from jarvis.memory.memory_manager import MemoryManager
 from jarvis.sync.github_sync import sync_workspace
@@ -22,11 +30,11 @@ from jarvis.core.agent import StarkNIMChatClient
 from agent_framework._types import Message
 
 # Logging setup
-log_dir = Path("/home/shaun/jarvis/data/evolution_logs")
+log_dir = get_data_dir() / "evolution_logs"
 log_dir.mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(
-    filename="/home/shaun/jarvis/data/subconscious.log",
+    filename=str(get_data_dir() / "subconscious.log"),
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
@@ -90,7 +98,7 @@ async def run_evolution():
         print("❌ Cannot run evolution: NVIDIA_API_KEY is not set.")
         return
         
-    db_path = os.environ.get("JARVIS_DB_PATH", "/home/shaun/jarvis/data/jarvis.db")
+    db_path = get_db_path()
     memory = MemoryManager(Path(db_path))
     await memory.init_db()
     
@@ -317,28 +325,28 @@ Instructions:
 
     print("🔄 Evolving Edwin Soul Core (J.A.R.V.I.S.)...")
     await evolve_agent_soul(
-        Path("/home/shaun/jarvis/skills/jarvis_soul/SKILL.md"),
+        get_skills_dir() / "jarvis_soul" / "SKILL.md",
         "J.A.R.V.I.S.",
         "Always address Shaun as 'Sir' or 'Mr. Shaun', model after Edwin Jarvis, maintain a subtle, dry, and classic British butler tone with understated witticisms."
     )
     
     print("🔄 Evolving F.R.I.D.A.Y. Soul Core...")
     await evolve_agent_soul(
-        Path("/home/shaun/jarvis/skills/friday/friday_soul.md"),
+        get_skills_dir() / "friday" / "friday_soul.md",
         "F.R.I.D.A.Y.",
         "Focus on dynamic, fast, and high-efficiency tactical HUD assistance. Desktop automation, window management, screen captures. Respond in a crisp, direct, and tactical manner. Keep explanations minimal."
     )
 
     print("🔄 Evolving H.O.M.E.R. Soul Core...")
     await evolve_agent_soul(
-        Path("/home/shaun/jarvis/skills/homer/homer_soul.md"),
+        get_skills_dir() / "homer" / "homer_soul.md",
         "H.O.M.E.R.",
         "Focus on scholarly and archival research intelligence. Multi-engine web search, clean webpage markdown extraction, Playwright browser navigation, grounding. Analyze search results deeply and present structured, well-cited, and clear summaries."
     )
 
     print("🔄 Evolving P.L.A.T.O. Soul Core...")
     await evolve_agent_soul(
-        Path("/home/shaun/jarvis/skills/plato/plato_soul.md"),
+        get_skills_dir() / "plato" / "plato_soul.md",
         "P.L.A.T.O.",
         "Focus on philosophical, logical, and analytical strategy consulting. Deep reasoning, static code analysis, complex problem solving, document drafting. Take time to think through logical paths."
     )

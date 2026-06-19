@@ -11,6 +11,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from jarvis.config.models import (
+    NIM_MODEL_BASKET,
+    apply_primary_model,
+    is_house_party,
+    normalize_session_model,
+)
+from jarvis.config.paths import (
+    get_data_dir,
+    get_db_path,
+    get_skills_dir,
+    get_subagent_dir,
+    get_web_dist_dir,
+)
 from jarvis.memory.memory_manager import MemoryManager
 from jarvis.core.agent import create_jarvis_agent, DEFAULT_SYSTEM_PROMPT
 from jarvis.skills.skill_forge import load_skills_from_dir, forge_skill
@@ -18,7 +31,7 @@ from jarvis.core.subagents import current_session_id, session_broadcasters, broa
 
 # Configure logging
 logging.basicConfig(
-    filename="/home/shaun/jarvis/data/server.log",
+    filename=str(get_data_dir() / "server.log"),
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
@@ -40,8 +53,7 @@ async def health():
 
 
 # Lazy initialized database manager
-db_path = os.environ.get("JARVIS_DB_PATH", "/home/shaun/jarvis/data/jarvis.db")
-memory = MemoryManager(Path(db_path))
+memory = MemoryManager(get_db_path())
 
 # Global startup lock
 startup_lock = asyncio.Lock()
@@ -50,9 +62,9 @@ initialized = False
 async def init_services():
     global initialized, memory
     async with startup_lock:
-        current_env_path = os.environ.get("JARVIS_DB_PATH", "/home/shaun/jarvis/data/jarvis.db")
+        current_env_path = str(get_db_path())
         if not initialized or str(memory.db_path) != current_env_path:
-            memory = MemoryManager(Path(current_env_path))
+            memory = MemoryManager(get_db_path())
             await memory.init_db()
             initialized = True
 
@@ -141,7 +153,7 @@ async def create_session():
         # We pre-compile system instructions to record in the sessions table
         profile = await memory.build_profile_prompt()
         soul_body = ""
-        soul_file = Path("/home/shaun/jarvis/skills/jarvis_soul/SKILL.md")
+        soul_file = get_skills_dir() / "jarvis_soul" / "SKILL.md"
         if soul_file.exists():
             content = soul_file.read_text(encoding="utf-8")
             if content.startswith("---"):
@@ -197,7 +209,7 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
                 file_id = f.get("id")
                 filename = f.get("filename")
                 if file_id and filename:
-                    file_path = Path(f"/home/shaun/jarvis/data/sessions/{session_id}/files/{file_id}/{filename}")
+                    file_path = get_data_dir() / "sessions" / session_id / "files" / file_id / filename
                     if file_path.exists():
                         try:
                             # Attempt to read as text
@@ -214,7 +226,7 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
         # 2. Compile instructions and active tools
         profile = await memory.build_profile_prompt()
         soul_body = ""
-        soul_file = Path("/home/shaun/jarvis/skills/jarvis_soul/SKILL.md")
+        soul_file = get_skills_dir() / "jarvis_soul" / "SKILL.md"
         if soul_file.exists():
             content = soul_file.read_text(encoding="utf-8")
             if content.startswith("---"):
@@ -229,7 +241,7 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
             custom_instructions += f"\n\n# ACTIVE PERSONA PROFILE\n{soul_body}"
         custom_instructions += f"\n\n{profile}"
         
-        skills_tools = load_skills_from_dir(Path("/home/shaun/jarvis/skills"))
+        skills_tools = load_skills_from_dir(get_skills_dir())
         all_tools = [forge_skill, sys_session_send] + skills_tools
         
         # Fetch session model and agent_id from SQLite
@@ -251,7 +263,7 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
 
         # 3. Create active agent based on agent_id
         if active_agent_id in ("friday", "homer", "plato"):
-            subagent_dir = Path(f"/home/shaun/jarvis/skills/{active_agent_id}")
+            subagent_dir = get_subagent_dir(active_agent_id)
             config_file = subagent_dir / "config.yaml"
             soul_file = subagent_dir / f"{active_agent_id}_soul.md"
             
@@ -264,10 +276,10 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
             
             model = config.get("model", "house-party")
             sub_tools = load_skills_from_dir(subagent_dir)
-            
+
             api_key = os.environ.get("NVIDIA_API_KEY", "")
             client = StarkNIMChatClient(api_key=api_key)
-            client.primary_model = model
+            apply_primary_model(client, model)
             
             agent = Agent(
                 client=client,
@@ -282,8 +294,7 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
                 tools=all_tools
             )
             
-        if session_model:
-            agent.client.primary_model = session_model
+        apply_primary_model(agent.client, session_model)
         
         # 4. Fetch full history to feed the agent
         history_msgs = await memory.get_session_history(session_id)
@@ -455,7 +466,6 @@ async def get_session_history_endpoint(session_id: str):
 
 @app.get("/v1/models")
 async def list_models():
-    from jarvis.core.agent import NIM_MODEL_BASKET
     return {"models": ["house-party"] + NIM_MODEL_BASKET}
 
 class ModelUpdateRequest(BaseModel):
@@ -464,13 +474,19 @@ class ModelUpdateRequest(BaseModel):
 @app.post("/v1/sessions/{session_id}/model")
 async def update_session_model(session_id: str, req: ModelUpdateRequest):
     await init_services()
+    normalized_model = normalize_session_model(req.model)
+    if not is_house_party(normalized_model) and normalized_model not in NIM_MODEL_BASKET:
+        raise HTTPException(status_code=400, detail=f"Unknown model: {req.model}")
     try:
         import aiosqlite
         async with aiosqlite.connect(memory.db_path) as conn:
-            await conn.execute("UPDATE sessions SET model = ? WHERE id = ?", (req.model, session_id))
+            await conn.execute(
+                "UPDATE sessions SET model = ? WHERE id = ?",
+                (normalized_model, session_id),
+            )
             await conn.commit()
-        logger.info(f"Updated session {session_id} model to {req.model}")
-        return {"status": "success", "model": req.model}
+        logger.info(f"Updated session {session_id} model to {normalized_model}")
+        return {"status": "success", "model": normalized_model}
     except Exception as e:
         logger.exception("Failed to update session model")
         raise HTTPException(status_code=500, detail=str(e))
@@ -485,7 +501,7 @@ async def get_subagent_detail(name: str):
         from jarvis.core.subagents import parse_simple_yaml
         from jarvis.skills.skill_forge import load_skills_from_dir
         
-        subagent_dir = Path(f"/home/shaun/jarvis/skills/{name_clean}")
+        subagent_dir = get_subagent_dir(name_clean)
         config_file = subagent_dir / "config.yaml"
         soul_file = subagent_dir / f"{name_clean}_soul.md"
         
@@ -494,8 +510,8 @@ async def get_subagent_detail(name: str):
             
         config = parse_simple_yaml(config_file.read_text(encoding="utf-8"))
         instructions = soul_file.read_text(encoding="utf-8").strip()
-        
-        model = config.get("model", "house-party")
+
+        model = normalize_session_model(config.get("model", "house-party"))
         tools_list = load_skills_from_dir(subagent_dir)
         tools = [{"name": t.name, "description": t.description} for t in tools_list]
         
@@ -517,7 +533,7 @@ async def upload_session_file(session_id: str, file: UploadFile = File(...)):
         filename = file.filename or "file"
         
         # Save file to data/sessions/{session_id}/files/{file_id}/{filename}
-        file_dir = Path(f"/home/shaun/jarvis/data/sessions/{session_id}/files/{file_id}")
+        file_dir = get_data_dir() / "sessions" / session_id / "files" / file_id
         file_dir.mkdir(parents=True, exist_ok=True)
         file_path = file_dir / filename
         
@@ -537,7 +553,7 @@ async def upload_session_file(session_id: str, file: UploadFile = File(...)):
 async def get_session_file_content(session_id: str, file_id: str):
     await init_services()
     try:
-        file_dir = Path(f"/home/shaun/jarvis/data/sessions/{session_id}/files/{file_id}")
+        file_dir = get_data_dir() / "sessions" / session_id / "files" / file_id
         if not file_dir.exists():
             raise HTTPException(status_code=404, detail="File not found")
         
@@ -579,6 +595,6 @@ def import_json_str(data: dict) -> str:
     return json.dumps(data)
 
 # Serve built React Web UI at "/"
-web_ui_dist = Path("/home/shaun/jarvis/web/dist")
+web_ui_dist = get_web_dist_dir()
 if web_ui_dist.is_dir() and (web_ui_dist / "index.html").is_file():
     app.mount("/", StaticFiles(directory=str(web_ui_dist), html=True), name="web-ui")

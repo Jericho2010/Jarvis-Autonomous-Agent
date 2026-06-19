@@ -18,8 +18,9 @@ from collections import defaultdict
     assert len(imports) == 5
 
 def test_forge_skill_with_existing_dependency(tmp_path, monkeypatch):
-    # Override skills directory path for testing
-    monkeypatch.setattr("jarvis.skills.skill_forge.Path", lambda p: Path(tmp_path) if p == "/home/shaun/jarvis/skills" else Path(p))
+    skills_dir = tmp_path / "skills"
+    skills_dir.mkdir()
+    monkeypatch.setattr("jarvis.skills.skill_forge.get_skills_dir", lambda: skills_dir)
     
     code = """
 from agent_framework import tool

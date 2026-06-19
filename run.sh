@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-cd /home/shaun/jarvis
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 if [ ! -d .venv ]; then
     echo "JARVIS // Virtual environment not found. Running setup.sh first..."

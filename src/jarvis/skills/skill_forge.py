@@ -6,6 +6,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, List, Optional
 from agent_framework import tool, FunctionTool
+from jarvis.config.paths import get_skills_dir, get_venv_python, get_workspace_root
 
 logger = logging.getLogger("jarvis.skills")
 
@@ -63,7 +64,7 @@ def install_dependency(import_name: str) -> bool:
             ["uv", "pip", "install", pypi_name],
             check=True,
             capture_output=True,
-            cwd="/home/shaun/jarvis"
+            cwd=str(get_workspace_root())
         )
         logger.info(f"Successfully installed package {pypi_name} using uv")
         return True
@@ -71,7 +72,7 @@ def install_dependency(import_name: str) -> bool:
         # Fallback to local venv pip
         try:
             subprocess.run(
-                ["/home/shaun/jarvis/.venv/bin/python3", "-m", "pip", "install", pypi_name],
+                [str(get_venv_python()), "-m", "pip", "install", pypi_name],
                 check=True,
                 capture_output=True
             )
@@ -141,7 +142,7 @@ def forge_skill(
     except Exception as e:
         logger.error(f"Error checking/installing dependencies: {e}")
 
-    skills_dir = Path("/home/shaun/jarvis/skills")
+    skills_dir = get_skills_dir()
     skills_dir.mkdir(parents=True, exist_ok=True)
     
     file_path = skills_dir / f"{skill_name}.py"
@@ -180,7 +181,7 @@ def forge_skill(
                     check=True,
                     capture_output=True,
                     text=True,
-                    cwd="/home/shaun/jarvis"
+                    cwd=str(get_workspace_root())
                 )
                 test_output = res.stdout + "\n" + res.stderr
             except subprocess.CalledProcessError as test_err:

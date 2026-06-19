@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Dict, Any, List
 
 from agent_framework import Agent, tool
+from jarvis.config.models import apply_primary_model
+from jarvis.config.paths import get_subagent_dir
 from jarvis.core.agent import StarkNIMChatClient
 from jarvis.skills.skill_forge import load_skills_from_dir
 
@@ -57,7 +59,7 @@ def load_subagent(name: str) -> Agent:
     Loads and compiles a stateless subagent instance dynamically from its skills directory.
     """
     name = name.lower().strip()
-    subagent_dir = Path(f"/home/shaun/jarvis/skills/{name}")
+    subagent_dir = get_subagent_dir(name)
     if not subagent_dir.exists():
         raise FileNotFoundError(f"Subagent directory not found: {subagent_dir}")
         
@@ -73,15 +75,15 @@ def load_subagent(name: str) -> Agent:
     config = parse_simple_yaml(config_file.read_text(encoding="utf-8"))
     instructions = soul_file.read_text(encoding="utf-8").strip()
     
-    model = config.get("model", "house_party")
-    
+    model = config.get("model", "house-party")
+
     # Load tools dynamically from the subagent's directory
     tools = load_skills_from_dir(subagent_dir)
-    
+
     # Instantiate client and set its primary model
     api_key = os.environ.get("NVIDIA_API_KEY", "")
     client = StarkNIMChatClient(api_key=api_key)
-    client.primary_model = model
+    apply_primary_model(client, model)
     
     # Compile Agent
     agent = Agent(

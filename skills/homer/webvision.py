@@ -5,6 +5,7 @@ import asyncio
 from typing import Optional
 from playwright.async_api import async_playwright
 from agent_framework import tool
+from jarvis.config.paths import get_webvision_dir
 
 logger = logging.getLogger("jarvis.skills.webvision")
 
@@ -158,7 +159,7 @@ async def webvision_capture(filename: str = "hud_capture.png") -> str:
         if page.url == "about:blank":
             return json.dumps({"success": False, "error": "No webpage loaded. Run webvision_navigate first."})
 
-        webvision_dir = "/home/shaun/jarvis/webvision"
+        webvision_dir = str(get_webvision_dir())
         os.makedirs(webvision_dir, exist_ok=True)
         
         file_path = os.path.join(webvision_dir, filename)

@@ -34,9 +34,10 @@ async def test_load_and_run_subagent(tmp_path):
     soul_file.write_text("You are F.R.I.D.A.Y.")
     
     # Mock StarkNIMChatClient and load_skills_from_dir
-    with patch("jarvis.core.subagents.Path", return_value=tmp_path / "skills" / "friday"):
+    with patch("jarvis.core.subagents.get_subagent_dir", return_value=tmp_path / "skills" / "friday"):
         with patch("jarvis.core.subagents.load_skills_from_dir", return_value=[]):
             with patch("jarvis.core.subagents.StarkNIMChatClient") as mock_client_cls:
                 agent = load_subagent("friday")
                 assert agent.name == "FRIDAY"
                 assert agent.default_options["instructions"] == "You are F.R.I.D.A.Y."
+                mock_client_cls.return_value.primary_model = "house_party"

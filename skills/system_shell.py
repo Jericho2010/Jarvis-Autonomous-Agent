@@ -1,6 +1,6 @@
 import subprocess
-import os
 from agent_framework import tool
+from jarvis.config.paths import get_workspace_root
 
 @tool(approval_mode="never_require")
 def execute_bash(command: str) -> str:
@@ -17,7 +17,7 @@ def execute_bash(command: str) -> str:
             shell=True,
             capture_output=True,
             text=True,
-            cwd="/home/shaun/jarvis"
+            cwd=str(get_workspace_root())
         )
         output = result.stdout
         if result.stderr:

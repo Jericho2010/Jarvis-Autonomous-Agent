@@ -189,10 +189,16 @@ async def test_session_detail_and_model_endpoints():
             json={"model": "nvidia/deepseek-ai/deepseek-v4-pro"}
         )
         assert res_set_model.status_code == 200
-        assert res_set_model.json()["model"] == "nvidia/deepseek-ai/deepseek-v4-pro"
-        
+        assert res_set_model.json()["model"] == "deepseek-ai/deepseek-v4-pro"
+
         res_detail_updated = await client.get(f"/v1/sessions/{session_id}")
-        assert res_detail_updated.json()["model"] == "nvidia/deepseek-ai/deepseek-v4-pro"
+        assert res_detail_updated.json()["model"] == "deepseek-ai/deepseek-v4-pro"
+
+        res_invalid_model = await client.post(
+            f"/v1/sessions/{session_id}/model",
+            json={"model": "totally-unknown-model"},
+        )
+        assert res_invalid_model.status_code == 400
 
 @pytest.mark.anyio
 async def test_session_history_endpoint():
