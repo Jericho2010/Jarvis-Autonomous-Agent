@@ -357,7 +357,7 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
             await memory.add_message(session_id, "assistant", accumulated_text)
 
         voice_prefs = await memory.get_preferences()
-        if voice_prefs.get(VOICE_MODE_PREF_KEY):
+        if await _voice_mode_enabled():
             spoken_text = clean_text_for_speech(accumulated_text)
             if spoken_text:
                 await broadcast_event(
@@ -650,6 +650,8 @@ async def set_voice_mode(req: VoiceModeRequest):
     client = get_speech_client()
     if req.enabled and not client.is_available:
         detail = client.init_error or "NVIDIA NIM speech services unavailable"
+        if "riva" in detail.lower():
+            detail = f"{detail}. Run ./run.sh to install speech dependencies."
         raise HTTPException(status_code=503, detail=detail)
     return {"enabled": req.enabled}
 

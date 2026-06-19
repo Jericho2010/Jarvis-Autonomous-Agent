@@ -65,8 +65,8 @@ export function useVoiceMode() {
     });
   }, []);
 
-  const speakText = useCallback(async (text: string) => {
-    if (!voiceEnabled || !text.trim()) return;
+  const playSpeech = useCallback(async (text: string) => {
+    if (!text.trim()) return;
     speechQueueRef.current = speechQueueRef.current.then(async () => {
       const blob = await synthesizeSpeech(text);
       if (blob) {
@@ -74,7 +74,12 @@ export function useVoiceMode() {
       }
     });
     await speechQueueRef.current;
-  }, [voiceEnabled, playBlob]);
+  }, [playBlob]);
+
+  const speakText = useCallback(async (text: string) => {
+    if (!voiceEnabled || !text.trim()) return;
+    await playSpeech(text);
+  }, [voiceEnabled, playSpeech]);
 
   const stopRecordingStream = useCallback(() => {
     mediaRecorderRef.current = null;
@@ -152,6 +157,7 @@ export function useVoiceMode() {
     refreshStatus,
     toggleVoiceMode,
     speakText,
+    playSpeech,
     startRecording,
     stopRecording,
   };

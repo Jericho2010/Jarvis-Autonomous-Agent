@@ -74,6 +74,7 @@ logger = logging.getLogger("jarvis.cli_client")
 SLASH_COMMANDS = {
     "/help": "Show this help manual",
     "/new": "Start a fresh dialogue session",
+    "/voicemode": "Toggle spoken butler voice: /voicemode [on|off]",
     "/switch": "Switch to an existing session: /switch [session_id|index]",
     "/agent": "Switch active session agent: /agent <homer|friday|plato|jarvis>",
     "/tasks": "Show the Jarvis implementation task list",
@@ -81,7 +82,6 @@ SLASH_COMMANDS = {
     "/models": "List available cognitive models",
     "/model": "Set primary model: /model <name|index>",
     "/subagents": "List cognitive sub-agent profiles",
-    "/voicemode": "Toggle spoken butler voice: /voicemode [on|off]",
     "/clear": "Clear the screen",
     "/exit": "Exit Jarvis TUI"
 }
@@ -573,6 +573,47 @@ class JarvisTUI:
             
         console.print("\n[dim #FFD700]System Offline. ⚙[/]\n")
 
+    async def play_voice_reply(self, text: str) -> None:
+        """Fetch TTS audio from the API and play it on the local system."""
+        if not text or not text.strip():
+            return
+        import tempfile
+        import shutil
+        import httpx
+
+        try:
+            async with httpx.AsyncClient() as client:
+                res = await client.post(
+                    f"http://127.0.0.1:{self.port}/v1/voice/tts",
+                    json={"text": text},
+                    timeout=60.0,
+                )
+                if res.status_code != 200:
+                    logger.debug("TTS playback skipped: HTTP %s", res.status_code)
+                    return
+                wav_bytes = res.content
+        except Exception as exc:
+            logger.debug("TTS playback request failed: %s", exc)
+            return
+
+        player = shutil.which("aplay") or shutil.which("paplay")
+        if not player:
+            console.print("[dim #FFD700]Voice reply synthesized — install aplay or paplay for TUI audio.[/dim]")
+            return
+
+        wav_path = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+                tmp.write(wav_bytes)
+                wav_path = tmp.name
+            subprocess.run([player, wav_path], check=False, capture_output=True)
+        finally:
+            if wav_path:
+                try:
+                    os.unlink(wav_path)
+                except OSError:
+                    pass
+
     async def sse_listener(self):
         """Listens to the active session stream and prints updates if not currently in a TUI-driven turn."""
         import httpx
@@ -669,6 +710,12 @@ class JarvisTUI:
                                     if new_title:
                                         self.session_title = new_title
                                         console.print(f"\n[bold #00F0FF]⬡ SESSION TITLE SET TO:[/] [bold #FFD700]{new_title}[/]")
+
+                                elif event_type == "voice_ready":
+                                    cleanup_and_print()
+                                    spoken = data.get("text", "")
+                                    if spoken:
+                                        asyncio.create_task(self.play_voice_reply(spoken))
                                     
                                 elif event_type == "turn_complete":
                                     cleanup_and_print()
@@ -1151,6 +1198,12 @@ class JarvisTUI:
                                     if new_title:
                                         self.session_title = new_title
                                         console.print(f"\n[bold #00F0FF]⬡ SESSION TITLE SET TO:[/] [bold #FFD700]{new_title}[/]")
+
+                                elif event_type == "voice_ready":
+                                    cleanup_live_and_print_accumulators()
+                                    spoken = data.get("text", "")
+                                    if spoken:
+                                        asyncio.create_task(self.play_voice_reply(spoken))
 
                                 elif event_type == "turn_complete":
                                     break

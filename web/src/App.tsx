@@ -58,8 +58,8 @@ export default function App() {
   
   const eventSourceRef = useRef<EventSource | null>(null);
   const voice = useVoiceMode();
-  const speakTextRef = useRef(voice.speakText);
-  speakTextRef.current = voice.speakText;
+  const playSpeechRef = useRef(voice.playSpeech);
+  playSpeechRef.current = voice.playSpeech;
 
   // Subagents Status Matrix
   const [subagents, setSubagents] = useState<SubagentStatus[]>([
@@ -239,8 +239,9 @@ export default function App() {
       } else if (type === 'voice_ready') {
         const text = data.text || '';
         if (text) {
-          void speakTextRef.current(text);
+          void playSpeechRef.current(text);
         }
+        void voice.refreshStatus();
 
       } else if (type === 'turn_complete') {
         // Construct final message
