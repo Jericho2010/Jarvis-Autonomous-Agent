@@ -12,13 +12,23 @@ fi
 source .venv/bin/activate
 export PYTHONPATH=src:$PYTHONPATH
 
+mkdir -p data
+
 # Install/update Python deps (e.g. nvidia-riva-client for voice mode)
 echo "JARVIS // Syncing Python dependencies..."
+pip install -U pip wheel -q 2>/dev/null || true
 if command -v uv >/dev/null 2>&1; then
     uv pip install -e . -q
 else
     pip install -e . -q
 fi
+
+# Verify speech dependency required for /voicemode
+if ! python3 -c "import riva.client" 2>/dev/null; then
+    echo "JARVIS // Installing NVIDIA Riva speech client..."
+    pip install "nvidia-riva-client>=2.19.0" -q
+fi
+python3 -c "import riva.client; print('JARVIS // Speech client (riva): OK')"
 
 # web/dist is not committed — always rebuild so git pull / merge changes appear in the HUD
 if command -v npm >/dev/null 2>&1 && [ -d web ] && [ -f web/package.json ]; then

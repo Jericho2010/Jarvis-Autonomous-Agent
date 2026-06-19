@@ -86,7 +86,7 @@ def check_system_dependencies():
         from rich.console import Console
         console = Console()
         console.print(f"\n[bold #FFD700]⚠ Stark System Diagnostics // Missing dependencies: {', '.join(missing)}[/bold #FFD700]")
-        console.print("[dim #FFD700]Please run: sudo apt install scrot xdotool wmctrl && playwright install[/dim]\n")
+        console.print("[dim]Please run: sudo apt install scrot xdotool wmctrl && playwright install[/dim]\n")
         logger.warning(f"Startup Diagnostics: Missing dependencies {missing}")
 
 @app.on_event("startup")

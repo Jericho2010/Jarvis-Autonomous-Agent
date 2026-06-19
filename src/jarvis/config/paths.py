@@ -1,22 +1,36 @@
 import os
 from pathlib import Path
+from typing import Optional
+
+
+def _env_path(name: str) -> Optional[Path]:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        return None
+    return Path(value).expanduser()
 
 
 def get_workspace_root() -> Path:
     """Return the Jarvis workspace root, honoring JARVIS_WORKSPACE_ROOT when set."""
-    env_root = os.environ.get("JARVIS_WORKSPACE_ROOT", "").strip()
+    env_root = _env_path("JARVIS_WORKSPACE_ROOT")
     if env_root:
-        return Path(env_root).expanduser().resolve()
+        return env_root.resolve()
     # src/jarvis/config/paths.py -> parents[3] == repo root
     return Path(__file__).resolve().parents[3]
 
 
 def get_data_dir() -> Path:
-    return Path(os.environ.get("JARVIS_DATA_DIR", get_workspace_root() / "data"))
+    override = _env_path("JARVIS_DATA_DIR")
+    if override:
+        return override.resolve()
+    return (get_workspace_root() / "data").resolve()
 
 
 def get_db_path() -> Path:
-    return Path(os.environ.get("JARVIS_DB_PATH", get_data_dir() / "jarvis.db"))
+    override = _env_path("JARVIS_DB_PATH")
+    if override:
+        return override.resolve()
+    return get_data_dir() / "jarvis.db"
 
 
 def get_skills_dir() -> Path:
