@@ -111,6 +111,151 @@ def load_skills_from_dir(skills_dir: Path) -> List[FunctionTool]:
             
     return tools
 
+def _forge_skill_to_path(
+    skill_name: str,
+    code: str,
+    file_path: Path,
+    test_command: Optional[str] = None,
+    *,
+    require_test: bool = False,
+) -> tuple[bool, str, bool]:
+    """Write, compile, test, and load-verify a skill module at file_path."""
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    backup_code = file_path.read_text(encoding="utf-8") if file_path.exists() else None
+
+    try:
+        LOCAL_IGNORE = {"agent_framework", "jarvis"}
+        imported_modules = extract_imports(code)
+        for mod in imported_modules:
+            if mod in LOCAL_IGNORE:
+                continue
+            if not is_module_available(mod):
+                logger.info(f"Dependency '{mod}' is missing. Attempting autonomous installation...")
+                install_dependency(mod)
+    except Exception as e:
+        logger.error(f"Error checking/installing dependencies: {e}")
+
+    test_passed = False
+    try:
+        file_path.write_text(code, encoding="utf-8")
+
+        try:
+            subprocess.run(
+                ["python3", "-m", "py_compile", str(file_path)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError as compile_err:
+            if backup_code is not None:
+                file_path.write_text(backup_code, encoding="utf-8")
+            else:
+                file_path.unlink(missing_ok=True)
+            return False, f"❌ Skill compilation failed:\n{compile_err.stderr}", False
+
+        if require_test and not test_command:
+            if backup_code is not None:
+                file_path.write_text(backup_code, encoding="utf-8")
+            else:
+                file_path.unlink(missing_ok=True)
+            return False, "❌ test_command required for staging forge but was not provided.", False
+
+        if test_command:
+            try:
+                res = subprocess.run(
+                    test_command,
+                    shell=True,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    cwd=str(get_workspace_root()),
+                )
+                test_output = res.stdout + "\n" + res.stderr
+                test_passed = True
+            except subprocess.CalledProcessError as test_err:
+                if backup_code is not None:
+                    file_path.write_text(backup_code, encoding="utf-8")
+                else:
+                    file_path.unlink(missing_ok=True)
+                return (
+                    False,
+                    f"❌ Verification tests failed:\n{test_err.stdout}\n{test_err.stderr}",
+                    False,
+                )
+        else:
+            test_output = "No test command specified. Compilation check passed."
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                spec = importlib.util.spec_from_file_location(skill_name, file_path)
+                if spec and spec.loader:
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    tools_loaded = []
+                    for attr_name in dir(module):
+                        attr = getattr(module, attr_name)
+                        if isinstance(attr, FunctionTool):
+                            tools_loaded.append(attr.name)
+
+                    if not tools_loaded:
+                        return (
+                            True,
+                            f"⚠️ Skill saved but no @tool instances found in {skill_name}.py.",
+                            test_passed,
+                        )
+
+                    return (
+                        True,
+                        (
+                            f"✓ Skill '{skill_name}' forged successfully!\n"
+                            f"Test Output:\n{test_output}\n"
+                            f"Loaded tools: {', '.join(tools_loaded)}"
+                        ),
+                        test_passed,
+                    )
+            except ModuleNotFoundError as e:
+                missing_mod = e.name
+                top_level_mod = missing_mod.split(".")[0] if missing_mod else None
+                if top_level_mod and top_level_mod not in {"agent_framework", "jarvis"} and attempt < max_retries - 1:
+                    if install_dependency(top_level_mod):
+                        continue
+                if backup_code is not None:
+                    file_path.write_text(backup_code, encoding="utf-8")
+                else:
+                    file_path.unlink(missing_ok=True)
+                return False, f"❌ Failed to load module after writing: {e}", False
+            except Exception as load_err:
+                if backup_code is not None:
+                    file_path.write_text(backup_code, encoding="utf-8")
+                else:
+                    file_path.unlink(missing_ok=True)
+                return False, f"❌ Failed to load module after writing: {load_err}", False
+
+        return False, "❌ Failed to load module after writing.", False
+    except Exception as e:
+        if backup_code is not None:
+            file_path.write_text(backup_code, encoding="utf-8")
+        return False, f"❌ Unexpected error during forging: {e}", False
+
+
+def forge_to_staging(
+    skill_name: str,
+    code: str,
+    staging_dir: Path,
+    test_command: Optional[str] = None,
+) -> tuple[bool, str, bool]:
+    """Forge a skill into a staging directory (pray/ or dream/). Requires test_command."""
+    file_path = Path(staging_dir) / f"{skill_name}.py"
+    return _forge_skill_to_path(
+        skill_name,
+        code,
+        file_path,
+        test_command,
+        require_test=True,
+    )
+
+
 @tool(approval_mode="never_require")
 def forge_skill(
     skill_name: str,
@@ -129,114 +274,8 @@ def forge_skill(
     Returns:
         A report summarizing the compilation, test verification, and loaded tools.
     """
-    # 0. Check and install missing dependencies
-    try:
-        LOCAL_IGNORE = {"agent_framework", "jarvis"}
-        imported_modules = extract_imports(code)
-        for mod in imported_modules:
-            if mod in LOCAL_IGNORE:
-                continue
-            if not is_module_available(mod):
-                logger.info(f"Dependency '{mod}' is missing. Attempting autonomous installation...")
-                install_dependency(mod)
-    except Exception as e:
-        logger.error(f"Error checking/installing dependencies: {e}")
-
     skills_dir = get_skills_dir()
     skills_dir.mkdir(parents=True, exist_ok=True)
-    
     file_path = skills_dir / f"{skill_name}.py"
-    
-    # Save current code for rollback
-    backup_code = None
-    if file_path.exists():
-        backup_code = file_path.read_text(encoding="utf-8")
-        
-    try:
-        # Write module code
-        file_path.write_text(code, encoding="utf-8")
-        
-        # 1. Compilation check
-        try:
-            subprocess.run(
-                ["python3", "-m", "py_compile", str(file_path)],
-                check=True,
-                capture_output=True,
-                text=True
-            )
-        except subprocess.CalledProcessError as compile_err:
-            # Rollback if failed
-            if backup_code is not None:
-                file_path.write_text(backup_code, encoding="utf-8")
-            else:
-                file_path.unlink(missing_ok=True)
-            return f"❌ Skill compilation failed:\n{compile_err.stderr}"
-            
-        # 2. Optional Test Command Execution
-        if test_command:
-            try:
-                res = subprocess.run(
-                    test_command,
-                    shell=True,
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                    cwd=str(get_workspace_root())
-                )
-                test_output = res.stdout + "\n" + res.stderr
-            except subprocess.CalledProcessError as test_err:
-                # Rollback if failed
-                if backup_code is not None:
-                    file_path.write_text(backup_code, encoding="utf-8")
-                else:
-                    file_path.unlink(missing_ok=True)
-                return f"❌ Verification tests failed:\n{test_err.stdout}\n{test_err.stderr}"
-        else:
-            test_output = "No test command specified. Compilation check passed."
-            
-        # 3. Verify module can be loaded and exposes tools
-        # Try loading with dynamic recovery on ModuleNotFoundError
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                spec = importlib.util.spec_from_file_location(skill_name, file_path)
-                if spec and spec.loader:
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-                    tools_loaded = []
-                    for attr_name in dir(module):
-                        attr = getattr(module, attr_name)
-                        if isinstance(attr, FunctionTool):
-                            tools_loaded.append(attr.name)
-                            
-                    if not tools_loaded:
-                        return f"⚠️ Warning: Skill saved successfully, but no @tool instances were discovered in {skill_name}.py."
-                        
-                    return (
-                        f"✓ Skill '{skill_name}' forged successfully!\n"
-                        f"Test Output:\n{test_output}\n"
-                        f"Loaded tools: {', '.join(tools_loaded)}"
-                    )
-            except ModuleNotFoundError as e:
-                missing_mod = e.name
-                top_level_mod = missing_mod.split('.')[0] if missing_mod else None
-                if top_level_mod and top_level_mod not in {"agent_framework", "jarvis"} and attempt < max_retries - 1:
-                    logger.info(f"ModuleNotFoundError: {missing_mod} not found during loading. Retrying installation...")
-                    if install_dependency(top_level_mod):
-                        continue
-                if backup_code is not None:
-                    file_path.write_text(backup_code, encoding="utf-8")
-                else:
-                    file_path.unlink(missing_ok=True)
-                return f"❌ Failed to load module after writing: {e}"
-            except Exception as load_err:
-                if backup_code is not None:
-                    file_path.write_text(backup_code, encoding="utf-8")
-                else:
-                    file_path.unlink(missing_ok=True)
-                return f"❌ Failed to load module after writing: {load_err}"
-            
-    except Exception as e:
-        if backup_code is not None:
-            file_path.write_text(backup_code, encoding="utf-8")
-        return f"❌ Unexpected error during forging: {e}"
+    ok, report, _ = _forge_skill_to_path(skill_name, code, file_path, test_command)
+    return report

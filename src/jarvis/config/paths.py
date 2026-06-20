@@ -37,12 +37,29 @@ def get_skills_dir() -> Path:
     return get_workspace_root() / "skills"
 
 
+def get_staging_dir() -> Path:
+    return get_workspace_root() / "skills_staging"
+
+
+def get_evolution_logs_dir() -> Path:
+    return get_data_dir() / "evolution_logs"
+
+
+def get_evolution_manifest_path() -> Path:
+    return get_data_dir() / "evolution_manifest.json"
+
+
 def get_subagent_dir(name: str) -> Path:
     return get_skills_dir() / name.lower().strip()
 
 
 def get_webvision_dir() -> Path:
     return get_workspace_root() / "webvision"
+
+
+def capture_public_url(filename: str) -> str:
+    """Public API path for a capture stored under webvision/."""
+    return f"/v1/captures/{filename}"
 
 
 def get_web_dist_dir() -> Path:

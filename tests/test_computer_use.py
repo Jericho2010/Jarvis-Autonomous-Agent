@@ -1,6 +1,7 @@
 import pytest
 import json
 from unittest.mock import MagicMock, patch
+from jarvis.core.display_env import DisplayEnvironment
 from skills.friday.computer_use import (
     stark_os_retinal_hud,
     stark_os_kinetic_click,
@@ -11,6 +12,18 @@ from skills.friday.computer_use import (
     stark_os_armor_list_windows,
     stark_os_armor_focus_window
 )
+
+@pytest.fixture(autouse=True)
+def mock_x11_ready():
+    ready = DisplayEnvironment(
+        session_type="x11",
+        display=":0",
+        x11_available=True,
+        wayland_warning=None,
+        xdotool_geometry="1920 1080",
+    )
+    with patch("skills.friday.computer_use.get_display_environment", return_value=ready):
+        yield
 
 def test_stark_os_retinal_hud_success():
     mock_run = MagicMock()
@@ -23,6 +36,7 @@ def test_stark_os_retinal_hud_success():
             assert result["success"] is True
             assert "Retinal HUD display buffer captured" in result["message"]
             assert result["path"] == "webvision/test.png"
+            assert result["url"] == "/v1/captures/test.png"
 
 def test_stark_os_kinetic_click_success():
     mock_run = MagicMock()

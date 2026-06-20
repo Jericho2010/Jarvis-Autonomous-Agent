@@ -4,9 +4,18 @@ import logging
 import subprocess
 from typing import Optional
 from agent_framework import tool
-from jarvis.config.paths import get_webvision_dir, get_workspace_root
+from jarvis.config.paths import capture_public_url, get_webvision_dir, get_workspace_root
+from jarvis.core.display_env import get_display_environment
 
 logger = logging.getLogger("jarvis.skills.computer_use")
+
+
+def _desktop_guard_message() -> Optional[str]:
+    env = get_display_environment()
+    if env.desktop_automation_ready:
+        return None
+    return env.wayland_warning or "Desktop automation unavailable (X11 display not detected)."
+
 
 @tool(approval_mode="never_require")
 def stark_os_retinal_hud(filename: str = "retinal_capture.png") -> str:
@@ -42,7 +51,8 @@ def stark_os_retinal_hud(filename: str = "retinal_capture.png") -> str:
             return json.dumps({
                 "success": True,
                 "message": "Retinal HUD display buffer captured successfully.",
-                "path": f"webvision/{filename}"
+                "path": f"webvision/{filename}",
+                "url": capture_public_url(filename),
             })
         else:
             err = res.stderr or "Unknown error"
@@ -51,7 +61,7 @@ def stark_os_retinal_hud(filename: str = "retinal_capture.png") -> str:
         logger.error(f"Retinal capture execution failed: {e}")
         return json.dumps({"success": False, "error": str(e)})
 
-@tool(approval_mode="never_require")
+@tool(approval_mode="always_require")
 def stark_os_kinetic_click(x: int, y: int) -> str:
     """
     Stark OS-Uplink: Move cursor to coordinates (x, y) and perform a left-click.
@@ -61,6 +71,9 @@ def stark_os_kinetic_click(x: int, y: int) -> str:
     Returns:
         JSON report of operation success.
     """
+    guard = _desktop_guard_message()
+    if guard:
+        return json.dumps({"success": False, "error": guard})
     try:
         res = subprocess.run(
             ["xdotool", "mousemove", str(x), str(y), "click", "1"],
@@ -73,7 +86,7 @@ def stark_os_kinetic_click(x: int, y: int) -> str:
     except Exception as e:
         return json.dumps({"success": False, "error": str(e)})
 
-@tool(approval_mode="never_require")
+@tool(approval_mode="always_require")
 def stark_os_kinetic_double_click(x: int, y: int) -> str:
     """
     Stark OS-Uplink: Move cursor to coordinates (x, y) and perform a double left-click.
@@ -83,6 +96,9 @@ def stark_os_kinetic_double_click(x: int, y: int) -> str:
     Returns:
         JSON report of operation success.
     """
+    guard = _desktop_guard_message()
+    if guard:
+        return json.dumps({"success": False, "error": guard})
     try:
         res = subprocess.run(
             ["xdotool", "mousemove", str(x), str(y), "click", "--repeat", "2", "--delay", "100", "1"],
@@ -95,7 +111,7 @@ def stark_os_kinetic_double_click(x: int, y: int) -> str:
     except Exception as e:
         return json.dumps({"success": False, "error": str(e)})
 
-@tool(approval_mode="never_require")
+@tool(approval_mode="always_require")
 def stark_os_kinetic_scroll(direction: str, clicks: int = 3) -> str:
     """
     Stark OS-Uplink: Perform a scroll wheel action.
@@ -105,6 +121,9 @@ def stark_os_kinetic_scroll(direction: str, clicks: int = 3) -> str:
     Returns:
         JSON report of operation success.
     """
+    guard = _desktop_guard_message()
+    if guard:
+        return json.dumps({"success": False, "error": guard})
     dir_lower = direction.lower().strip()
     if dir_lower == "up":
         button = "4"
@@ -125,7 +144,7 @@ def stark_os_kinetic_scroll(direction: str, clicks: int = 3) -> str:
     except Exception as e:
         return json.dumps({"success": False, "error": str(e)})
 
-@tool(approval_mode="never_require")
+@tool(approval_mode="always_require")
 def stark_os_kinetic_type(text: str) -> str:
     """
     Stark OS-Uplink: Type text at the current keyboard cursor location.
@@ -134,6 +153,9 @@ def stark_os_kinetic_type(text: str) -> str:
     Returns:
         JSON report of operation success.
     """
+    guard = _desktop_guard_message()
+    if guard:
+        return json.dumps({"success": False, "error": guard})
     try:
         res = subprocess.run(
             ["xdotool", "type", "--delay", "50", text],
@@ -146,7 +168,7 @@ def stark_os_kinetic_type(text: str) -> str:
     except Exception as e:
         return json.dumps({"success": False, "error": str(e)})
 
-@tool(approval_mode="never_require")
+@tool(approval_mode="always_require")
 def stark_os_kinetic_key(key: str) -> str:
     """
     Stark OS-Uplink: Press a key or combination of keys (e.g. 'Return', 'ctrl+alt+t', 'BackSpace').
@@ -155,6 +177,9 @@ def stark_os_kinetic_key(key: str) -> str:
     Returns:
         JSON report of operation success.
     """
+    guard = _desktop_guard_message()
+    if guard:
+        return json.dumps({"success": False, "error": guard})
     try:
         res = subprocess.run(
             ["xdotool", "key", key],
@@ -197,7 +222,7 @@ def stark_os_armor_list_windows() -> str:
     except Exception as e:
         return json.dumps({"success": False, "error": str(e)})
 
-@tool(approval_mode="never_require")
+@tool(approval_mode="always_require")
 def stark_os_armor_focus_window(title_pattern: str) -> str:
     """
     Stark OS-Uplink: Switch focus and bring a window matching the title pattern to the foreground.
@@ -206,6 +231,9 @@ def stark_os_armor_focus_window(title_pattern: str) -> str:
     Returns:
         JSON report of operation success.
     """
+    guard = _desktop_guard_message()
+    if guard:
+        return json.dumps({"success": False, "error": guard})
     try:
         res = subprocess.run(
             ["wmctrl", "-a", title_pattern],

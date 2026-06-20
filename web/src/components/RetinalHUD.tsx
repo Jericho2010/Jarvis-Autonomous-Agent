@@ -56,7 +56,7 @@ export const RetinalHUD: React.FC<RetinalHUDProps> = ({ screenshotUrl }) => {
               <Crosshair className="w-8 h-8 text-white/5" />
               <div className="space-y-1">
                 <div>AWAITING OPTICAL INPUT</div>
-                <div className="text-[10px] text-white/10 uppercase">Homer Webvision screenshot feed</div>
+                <div className="text-[10px] text-white/10 uppercase">Optical capture feed</div>
               </div>
             </div>
           )}

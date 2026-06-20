@@ -130,6 +130,25 @@ export async function createSession(): Promise<string> {
   return data.session_id;
 }
 
+export async function approveToolAction(
+  sessionId: string,
+  requestId: string,
+  approved: boolean
+): Promise<boolean> {
+  try {
+    const baseUrl = await getApiUrl();
+    const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ request_id: requestId, approved }),
+    });
+    return res.ok;
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
+}
+
 export async function sendChatMessage(
   sessionId: string, 
   message: string, 
@@ -276,7 +295,10 @@ export async function getSessionStream(
     'user_message',
     'agent_changed',
     'title_changed',
-    'voice_ready'
+    'voice_ready',
+    'handoff',
+    'approval_required',
+    'approval_resolved'
   ];
   
   eventTypes.forEach(type => {

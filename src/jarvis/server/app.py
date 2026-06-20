@@ -24,11 +24,15 @@ from jarvis.config.paths import (
     get_skills_dir,
     get_subagent_dir,
     get_web_dist_dir,
+    get_webvision_dir,
 )
 from jarvis.memory.memory_manager import MemoryManager
 from jarvis.core.agent import create_jarvis_agent, DEFAULT_SYSTEM_PROMPT
+from jarvis.core.display_env import log_startup_display_warning
+from jarvis.core.handoff_workflow import clear_workflow_state, run_handoff_turn, submit_approval
+from jarvis.core.playwright_mcp import get_playwright_mcp_manager
 from jarvis.skills.skill_forge import load_skills_from_dir, forge_skill
-from jarvis.core.subagents import current_session_id, session_broadcasters, broadcast_event, sys_session_send
+from jarvis.core.subagents import current_session_id, session_broadcasters, broadcast_event
 from jarvis.config.voice import VOICE_MODE_PREF_KEY
 from jarvis.voice.nim_speech import clean_text_for_speech, get_speech_client
 
@@ -91,16 +95,18 @@ def check_system_dependencies():
     for cmd in ["xdotool", "scrot", "wmctrl"]:
         if not shutil.which(cmd):
             missing.append(cmd)
-    try:
-        import playwright
-    except ImportError:
-        missing.append("playwright (python package)")
+
+    manager = get_playwright_mcp_manager()
+    node_ok, node_detail = manager.node_version_ok()
+    if not node_ok:
+        missing.append(f"node ({node_detail})")
         
     if missing:
         from rich.console import Console
         console = Console()
         console.print(f"\n[bold #FFD700]⚠ Stark System Diagnostics // Missing dependencies: {', '.join(missing)}[/bold #FFD700]")
-        console.print("[dim]Please run: sudo apt install scrot xdotool wmctrl && playwright install[/dim]\n")
+        console.print("[dim]Desktop: sudo apt install scrot xdotool wmctrl[/dim]")
+        console.print("[dim]Browser MCP: Node 18+ and `npx playwright install`[/dim]\n")
         logger.warning(f"Startup Diagnostics: Missing dependencies {missing}")
 
 @app.on_event("startup")
@@ -109,7 +115,21 @@ async def on_startup():
     # Voice mode always starts disabled; Shaun re-enables it per session via /voicemode on.
     await memory.upsert_preference(VOICE_MODE_PREF_KEY, False)
     check_system_dependencies()
+    log_startup_display_warning()
+    manager = get_playwright_mcp_manager()
+    ok, detail = manager.node_version_ok()
+    if ok:
+        try:
+            await manager.start()
+        except Exception as exc:
+            logger.warning("Playwright MCP failed to start at boot: %s", exc)
+    else:
+        logger.warning("Playwright MCP skipped: %s", detail)
     logger.info("JARVIS Server Online.")
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    await get_playwright_mcp_manager().stop()
 
 class ChatRequest(BaseModel):
     message: str
@@ -124,6 +144,10 @@ class VoiceModeRequest(BaseModel):
 
 class VoiceTTSRequest(BaseModel):
     text: str
+
+class ApprovalRequest(BaseModel):
+    request_id: str
+    approved: bool
 
 @app.get("/v1/sessions")
 async def list_sessions():
@@ -266,7 +290,7 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
         custom_instructions += f"\n\n{profile}"
         
         skills_tools = load_skills_from_dir(get_skills_dir())
-        all_tools = [forge_skill, sys_session_send] + skills_tools
+        all_tools = [forge_skill] + skills_tools
         
         # Fetch session model and agent_id from SQLite
         session_model = "house-party"
@@ -285,8 +309,18 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
         except Exception:
             logger.exception("Failed to fetch session model / agent_id")
 
-        # 3. Create active agent based on agent_id
-        if active_agent_id in ("friday", "homer", "plato"):
+        # 3. Run turn via Handoff workflow (default) or direct subagent override
+        accumulated_text = ""
+
+        if active_agent_id == "jarvis":
+            accumulated_text = await run_handoff_turn(
+                session_id,
+                full_prompt,
+                api_key=os.environ.get("NVIDIA_API_KEY", ""),
+                jarvis_instructions=custom_instructions,
+                session_model=session_model,
+            )
+        elif active_agent_id in ("friday", "homer", "plato"):
             subagent_dir = get_subagent_dir(active_agent_id)
             config_file = subagent_dir / "config.yaml"
             soul_file = subagent_dir / f"{active_agent_id}_soul.md"
@@ -311,63 +345,64 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
                 instructions=instructions,
                 tools=sub_tools
             )
+            apply_primary_model(agent.client, session_model)
+
+            history_msgs = await memory.get_session_history(session_id)
+            from agent_framework._types import Message
+            agent_msgs = []
+            for m in history_msgs:
+                agent_msgs.append(Message(role=m["role"], contents=[m["content"] or ""]))
+                
+            raw_buffer = ""
+            last_reasoning = ""
+            last_text = ""
+            
+            async for chunk in agent.run(messages=agent_msgs, stream=True):
+                if chunk.text:
+                    raw_buffer += chunk.text
+                    
+                    if "<think>" in raw_buffer:
+                        if "</think>" in raw_buffer:
+                            parts = raw_buffer.split("<think>", 1)
+                            before_think = parts[0]
+                            think_and_after = parts[1].split("</think>", 1)
+                            current_reasoning = think_and_after[0].strip()
+                            current_text = before_think + think_and_after[1]
+                        else:
+                            parts = raw_buffer.split("<think>", 1)
+                            current_reasoning = parts[1].strip()
+                            current_text = parts[0]
+                    else:
+                        current_reasoning = ""
+                        current_text = raw_buffer
+                    
+                    if current_reasoning != last_reasoning:
+                        diff = current_reasoning[len(last_reasoning):]
+                        await broadcast_event(session_id, "reasoning_chunk", {"text": diff})
+                        last_reasoning = current_reasoning
+                        
+                    if current_text != last_text:
+                        diff = current_text[len(last_text):]
+                        await broadcast_event(session_id, "text_chunk", {"text": diff})
+                        last_text = current_text
+                        
+            if last_reasoning:
+                accumulated_text += f"<think>\n{last_reasoning}\n</think>\n"
+            accumulated_text += last_text
         else:
             agent = create_jarvis_agent(
                 api_key=os.environ.get("NVIDIA_API_KEY", ""),
                 instructions_override=custom_instructions,
                 tools=all_tools
             )
-            
-        apply_primary_model(agent.client, session_model)
-        
-        # 4. Fetch full history to feed the agent
-        history_msgs = await memory.get_session_history(session_id)
-        from agent_framework._types import Message
-        agent_msgs = []
-        for m in history_msgs:
-            agent_msgs.append(Message(role=m["role"], contents=[m["content"] or ""]))
-            
-        # 5. Run agent stream
-        raw_buffer = ""
-        last_reasoning = ""
-        last_text = ""
-        accumulated_text = ""
-        
-        async for chunk in agent.run(messages=agent_msgs, stream=True):
-            if chunk.text:
-                raw_buffer += chunk.text
-                
-                # Dynamic parsing of <think> tags
-                if "<think>" in raw_buffer:
-                    if "</think>" in raw_buffer:
-                        parts = raw_buffer.split("<think>", 1)
-                        before_think = parts[0]
-                        think_and_after = parts[1].split("</think>", 1)
-                        current_reasoning = think_and_after[0].strip()
-                        current_text = before_think + think_and_after[1]
-                    else:
-                        parts = raw_buffer.split("<think>", 1)
-                        current_reasoning = parts[1].strip()
-                        current_text = parts[0]
-                else:
-                    current_reasoning = ""
-                    current_text = raw_buffer
-                
-                # Emit increments
-                if current_reasoning != last_reasoning:
-                    diff = current_reasoning[len(last_reasoning):]
-                    await broadcast_event(session_id, "reasoning_chunk", {"text": diff})
-                    last_reasoning = current_reasoning
-                    
-                if current_text != last_text:
-                    diff = current_text[len(last_text):]
-                    await broadcast_event(session_id, "text_chunk", {"text": diff})
-                    last_text = current_text
-                    
-        # 6. Turn completion
-        if last_reasoning:
-            accumulated_text += f"<think>\n{last_reasoning}\n</think>\n"
-        accumulated_text += last_text
+            apply_primary_model(agent.client, session_model)
+            accumulated_text = await run_handoff_turn(
+                session_id,
+                full_prompt,
+                api_key=os.environ.get("NVIDIA_API_KEY", ""),
+                jarvis_instructions=custom_instructions,
+                session_model=session_model,
+            )
         
         if accumulated_text.strip():
             await memory.add_message(session_id, "assistant", accumulated_text)
@@ -604,6 +639,31 @@ async def get_session_file_content(session_id: str, file_id: str):
         logger.exception("Failed to get session file content")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/v1/captures/{filename}")
+async def get_capture(filename: str):
+    await init_services()
+    if not filename or "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid capture filename")
+    file_path = get_webvision_dir() / filename
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Capture not found")
+    return FileResponse(path=str(file_path), filename=file_path.name)
+
+
+@app.post("/v1/sessions/{session_id}/approve")
+async def approve_tool_action(session_id: str, req: ApprovalRequest):
+    await init_services()
+    accepted = await submit_approval(session_id, req.request_id, req.approved)
+    if not accepted:
+        raise HTTPException(status_code=404, detail="No pending approval for this session")
+    await broadcast_event(
+        session_id,
+        "approval_resolved",
+        {"request_id": req.request_id, "approved": req.approved},
+    )
+    return {"status": "accepted", "approved": req.approved}
+
+
 @app.post("/v1/sessions/{session_id}/switch-agent")
 async def switch_session_agent(session_id: str, req: AgentSwitchRequest):
     await init_services()
@@ -613,6 +673,8 @@ async def switch_session_agent(session_id: str, req: AgentSwitchRequest):
             raise HTTPException(status_code=400, detail=f"Invalid agent ID: {agent_id}")
             
         await memory.update_session_agent(session_id, agent_id)
+        if agent_id != "jarvis":
+            clear_workflow_state(session_id)
         
         # Broadcast the agent switch to all listeners so clients update their UI
         await broadcast_event(session_id, "agent_changed", {"agent_id": agent_id})

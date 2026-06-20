@@ -14,7 +14,9 @@ import {
   setSessionModel,
   getAvailableModels,
   getSessionDetail,
-  switchSessionAgent
+  switchSessionAgent,
+  approveToolAction,
+  getApiUrl
 } from './lib/api';
 import { ReactorHUD } from './components/ReactorHUD';
 import { SubagentsRoster } from './components/SubagentsRoster';
@@ -56,6 +58,11 @@ export default function App() {
   const [activeToolArgs, setActiveToolArgs] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+  const [pendingApproval, setPendingApproval] = useState<{
+    request_id: string;
+    function_name?: string;
+    arguments?: Record<string, unknown>;
+  } | null>(null);
   
   const eventSourceRef = useRef<EventSource | null>(null);
   const voice = useVoiceMode();
@@ -127,6 +134,7 @@ export default function App() {
     setActiveTool(null);
     setActiveToolArgs(null);
     setScreenshotUrl(null);
+    setPendingApproval(null);
 
     // Fetch actual history and details
     getSessionHistory(currentSessionId).then(history => {
@@ -204,14 +212,34 @@ export default function App() {
           `\x1b[37m  Output: ${typeof output === 'string' ? output.slice(0, 150) : 'Object output'}...\x1b[0m`
         ]);
         
-        // Check if output contains screenshot path or image data (Homer / Friday)
-        if (output && typeof output === 'string' && (output.includes('.png') || output.includes('.jpg'))) {
-          // Attempt to match path
-          const match = output.match(/(\/[^\s]+?\.(?:png|jpg))/);
-          if (match && match[1]) {
-            setScreenshotUrl(match[1]);
-            setActiveTab('retinal'); // Switch viewport to Retinal HUD on screenshot capture!
-          }
+        // Check if output contains screenshot path or capture URL (Homer / Friday)
+        if (output && typeof output === 'string') {
+          void (async () => {
+            let capturePath: string | null = null;
+            try {
+              const parsed = JSON.parse(output);
+              if (parsed?.url && typeof parsed.url === 'string') {
+                capturePath = parsed.url;
+              } else if (parsed?.path && typeof parsed.path === 'string') {
+                capturePath = parsed.path.startsWith('/')
+                  ? parsed.path
+                  : `/v1/captures/${parsed.path.replace(/^webvision\//, '')}`;
+              }
+            } catch {
+              const urlMatch = output.match(/(\/v1\/captures\/[^\s"']+\.(?:png|jpg|jpeg))/i);
+              if (urlMatch?.[1]) {
+                capturePath = urlMatch[1];
+              }
+            }
+            if (capturePath) {
+              const baseUrl = await getApiUrl();
+              const fullUrl = capturePath.startsWith('http')
+                ? capturePath
+                : `${baseUrl}${capturePath.startsWith('/') ? capturePath : `/${capturePath}`}`;
+              setScreenshotUrl(fullUrl);
+              setActiveTab('retinal');
+            }
+          })();
         }
         
         // Reset subagent activity on complete
@@ -236,6 +264,26 @@ export default function App() {
         const title = data.title || '';
         listSessions().then(setSessions);
         setLogs(prev => [...prev, `\x1b[36m⬡ SESSION TITLE SET TO: ${title}\x1b[0m`]);
+
+      } else if (type === 'handoff') {
+        const agent = (data.agent || '').toLowerCase();
+        if (agent && ['friday', 'homer', 'plato'].includes(agent)) {
+          setSubagents(prev => prev.map(sa =>
+            sa.name === agent ? { ...sa, activity: 'working' } : sa
+          ));
+          setCurrentAgent(agent);
+        }
+
+      } else if (type === 'approval_required') {
+        setPendingApproval({
+          request_id: data.request_id,
+          function_name: data.function_name,
+          arguments: data.arguments,
+        });
+        setLogs(prev => [...prev, '\x1b[1;33m⚠ DESKTOP ACTION REQUIRES WEB HUD APPROVAL\x1b[0m']);
+
+      } else if (type === 'approval_resolved') {
+        setPendingApproval(null);
 
       } else if (type === 'voice_ready') {
         const text = data.text || '';
@@ -548,6 +596,22 @@ export default function App() {
     }
   };
 
+  const handleApproval = async (approved: boolean) => {
+    if (!currentSessionId || !pendingApproval) return;
+    const ok = await approveToolAction(currentSessionId, pendingApproval.request_id, approved);
+    if (!ok) {
+      setLogs(prev => [...prev, '\x1b[1;31m❌ Failed to submit approval response\x1b[0m']);
+      return;
+    }
+    setPendingApproval(null);
+    setLogs(prev => [
+      ...prev,
+      approved
+        ? '\x1b[1;32m✔ DESKTOP ACTION APPROVED\x1b[0m'
+        : '\x1b[1;31m✖ DESKTOP ACTION REJECTED\x1b[0m',
+    ]);
+  };
+
   const handleClearSession = () => {
     setMessages([]);
     setStreamingText('');
@@ -557,6 +621,39 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-stark-bg text-white font-sans antialiased select-none">
+      {pendingApproval && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-lg mx-4 rounded-lg border border-stark-red/40 bg-stark-panel p-6 shadow-2xl">
+            <div className="flex items-center gap-2 text-stark-red font-mono text-sm mb-3">
+              <ShieldAlert className="w-5 h-5" />
+              DESKTOP ACTION APPROVAL REQUIRED
+            </div>
+            <p className="text-sm text-white/70 mb-4">
+              Friday requested a kinetic desktop action. Approve only if you intend this to run on your machine.
+            </p>
+            <div className="rounded bg-black/40 border border-white/10 p-3 font-mono text-xs text-white/80 mb-5 overflow-x-auto">
+              <div><span className="text-stark-gold">tool:</span> {pendingApproval.function_name || 'unknown'}</div>
+              <div className="mt-2 text-white/60 whitespace-pre-wrap">
+                {JSON.stringify(pendingApproval.arguments || {}, null, 2)}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => void handleApproval(false)}
+                className="px-4 py-2 rounded border border-white/15 text-white/70 hover:bg-white/5 font-mono text-xs"
+              >
+                REJECT
+              </button>
+              <button
+                onClick={() => void handleApproval(true)}
+                className="px-4 py-2 rounded border border-stark-red/40 bg-stark-red/20 text-stark-red hover:bg-stark-red/30 font-mono text-xs"
+              >
+                APPROVE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* 1. Left Sidebar: Session history & Reactor Core */}
       <div className="w-64 border-r border-white/5 bg-stark-panel/30 flex flex-col h-full shrink-0">

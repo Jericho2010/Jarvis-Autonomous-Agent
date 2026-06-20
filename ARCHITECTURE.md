@@ -115,7 +115,7 @@ Each Python file in the `skills/` directory is automatically scanned and loaded 
 | :--- | :--- |
 | `skills/computer_use.py` | Stark OS-Uplink: screen capture (scrot), mouse/keyboard actuation (xdotool), and window management (wmctrl). |
 | `skills/web_research.py` | Neural Uplink: Tavily/Firecrawl/DuckDuckGo web search and page content extraction. |
-| `skills/webvision.py` | Optical Uplink: Playwright Chromium browser automation — navigate, interact, capture, and close. |
+| `@playwright/mcp` (Homer) | Optical Uplink: headless browser automation via MAF `MCPStdioTool`. |
 | `skills/code_analyzer.py` | Static analysis helpers for reviewing source code. |
 | `skills/creative_solver.py` | Brainstorming and creative ideation tools. |
 | `skills/file_ops.py` | Filesystem operations: read, write, and list files. |
@@ -295,28 +295,37 @@ The computer use skill (`skills/computer_use.py`) grants JARVIS the ability to d
 | Tool | Binary | Description |
 | :--- | :--- | :--- |
 | `stark_os_retinal_hud` | `scrot` | Capture the full desktop to a PNG file in `webvision/`. |
-| `stark_os_kinetic_click` | `xdotool` | Move cursor and left-click at pixel coordinates. |
-| `stark_os_kinetic_double_click` | `xdotool` | Double-click at pixel coordinates. |
-| `stark_os_kinetic_scroll` | `xdotool` | Scroll up or down N clicks. |
-| `stark_os_kinetic_type` | `xdotool` | Type a text string at current keyboard focus. |
-| `stark_os_kinetic_key` | `xdotool` | Press a key or keyboard shortcut (e.g. `ctrl+c`). |
+| `stark_os_kinetic_click` | `xdotool` | Move cursor and left-click at pixel coordinates (**Web HUD approval required**). |
+| `stark_os_kinetic_double_click` | `xdotool` | Double-click at pixel coordinates (**approval required**). |
+| `stark_os_kinetic_scroll` | `xdotool` | Scroll up or down N clicks (**approval required**). |
+| `stark_os_kinetic_type` | `xdotool` | Type a text string at current keyboard focus (**approval required**). |
+| `stark_os_kinetic_key` | `xdotool` | Press a key or keyboard shortcut (**approval required**). |
 | `stark_os_armor_list_windows` | `wmctrl` | List all active X11 windows with metadata. |
-| `stark_os_armor_focus_window` | `wmctrl` | Bring a window matching a title pattern to the foreground. |
+| `stark_os_armor_focus_window` | `wmctrl` | Bring a window matching a title pattern to the foreground (**approval required**). |
 
-All tools return JSON-encoded result objects, enabling programmatic chaining of retinal HUD captures and kinetic interactions.
+Captures are exposed via `GET /v1/captures/{filename}` and referenced in tool JSON as `"url": "/v1/captures/..."`.
 
 ---
 
-## 7. WebVision Optical Uplink
+## 7. Digital Hands Orchestration
 
-The WebVision skill (`skills/webvision.py`) drives a headless Chromium browser using **Playwright** to automate browser-based tasks:
+Default Jarvis chat runs a MAF **HandoffBuilder** workflow (`src/jarvis/core/handoff_workflow.py`):
 
-- `webvision_navigate`: Navigate to a URL and wait for DOM load.
-- `webvision_interact`: Click, type, or select elements via CSS selectors.
-- `webvision_capture`: Capture a full-page screenshot to `webvision/*.png`.
-- `webvision_close`: Dispose of the browser session cleanly.
+- **Jarvis** triages and hands off to specialists.
+- **Homer** handles web research (`web_search`, `web_extract`) and browser automation via `@playwright/mcp`.
+- **Friday** handles desktop automation (`computer_use.py`).
 
-Screenshots are stored in the workspace's `webvision/` directory (gitignored).
+Friday kinetic tools use `approval_mode="always_require"`. The workflow pauses and emits SSE `approval_required`; the Web HUD posts to `POST /v1/sessions/{id}/approve`.
+
+Direct `/agent homer|friday|plato` overrides still run a single agent without the handoff workflow.
+
+---
+
+## 8. Playwright MCP Optical Uplink
+
+Homer's browser tools come from a shared **`MCPStdioTool`** subprocess (`npx -y @playwright/mcp@latest --headless`), managed by `src/jarvis/core/playwright_mcp.py`. Requires Node 18+ and `npx playwright install`.
+
+Screenshots land in the workspace `webvision/` directory (gitignored) and are served to the Retinal HUD via `/v1/captures/`.
 
 ---
 

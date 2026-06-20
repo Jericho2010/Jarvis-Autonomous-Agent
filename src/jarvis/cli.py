@@ -43,18 +43,20 @@ def check_system_dependencies():
     for cmd in ["xdotool", "scrot", "wmctrl"]:
         if not shutil.which(cmd):
             missing.append(cmd)
-    try:
-        import playwright
-    except ImportError:
-        missing.append("playwright (python package)")
+
+    from jarvis.core.playwright_mcp import get_playwright_mcp_manager
+    node_ok, node_detail = get_playwright_mcp_manager().node_version_ok()
+    if not node_ok:
+        missing.append(f"node ({node_detail})")
         
     if missing:
         console.print(f"\n[bold #FFD700]⚠ Stark System Diagnostics // Missing dependencies: {', '.join(missing)}[/bold #FFD700]")
-        console.print("[dim #FFD700]Please run: sudo apt install scrot xdotool wmctrl && playwright install[/dim]\n")
+        console.print("[dim #FFD700]Desktop: sudo apt install scrot xdotool wmctrl[/dim]")
+        console.print("[dim #FFD700]Browser MCP: Node 18+ and `npx playwright install`[/dim]\n")
         logger.warning(f"Startup Diagnostics: Missing dependencies {missing}")
 
 from jarvis.skills.skill_forge import load_skills_from_dir, forge_skill
-from jarvis.evolution.subconscious import SubconsciousEngine
+from jarvis.evolution.subconscious import BackgroundRoutineEngine
 
 def _load_skills_silent(path):
     with open(os.devnull, 'w') as devnull:
@@ -79,6 +81,7 @@ SLASH_COMMANDS = {
     "/agent": "Switch active session agent: /agent <homer|friday|plato|jarvis>",
     "/tasks": "Show the Jarvis implementation task list",
     "/skills": "List all loaded skill modules",
+    "/evolve": "Review staged skills: /evolve [approve|reject|archive|show]",
     "/models": "List available cognitive models",
     "/model": "Set primary model: /model <name|index>",
     "/subagents": "List cognitive sub-agent profiles",
@@ -545,7 +548,7 @@ class JarvisTUI:
                 except Exception as e:
                     logger.error(f"Failed to submit subconscious routine: {e}")
                     
-        self.subconscious = SubconsciousEngine(_background_runner)
+        self.subconscious = BackgroundRoutineEngine(_background_runner)
         self.subconscious.start()
 
     def shutdown(self):
@@ -710,6 +713,17 @@ class JarvisTUI:
                                     if new_title:
                                         self.session_title = new_title
                                         console.print(f"\n[bold #00F0FF]⬡ SESSION TITLE SET TO:[/] [bold #FFD700]{new_title}[/]")
+
+                                elif event_type == "approval_required":
+                                    cleanup_and_print()
+                                    tool_name = data.get("function_name", "desktop action")
+                                    console.print(
+                                        Panel(
+                                            f"Tool: {tool_name}\nApprove or reject in the Web HUD.",
+                                            title="[bold #FFD700]Desktop Action Pending Approval[/]",
+                                            border_style="#FFD700",
+                                        )
+                                    )
 
                                 elif event_type == "voice_ready":
                                     cleanup_and_print()
@@ -971,6 +985,111 @@ class JarvisTUI:
                 except Exception as e:
                     console.print(f"[bold red]❌ Failed to update voice mode:[/] {e}\n")
             return True
+        elif base == "/evolve":
+            from evolution.subconscious import staging as evo_staging
+            from evolution.subconscious.sync import sync_after_evolution
+
+            evo_staging.ensure_staging_dirs()
+
+            if len(parts) < 2:
+                pending = evo_staging.list_pending()
+                if not pending:
+                    console.print(
+                        Panel(
+                            "No pending staged skills.\n\n[dim]/evolve archive — rejected history\n/evolve show <name>[/dim]",
+                            title="Evolution Staging",
+                            border_style="#FFD700",
+                        )
+                    )
+                    return True
+                lines = ["[bold]Pending staged skills:[/bold]"]
+                for p in pending:
+                    test = "pass" if p.get("test_passed") else "fail"
+                    lines.append(
+                        f"  [cyan]{p['name']}[/] [{p.get('source')}] "
+                        f"forged {str(p.get('forged_at', '?'))[:10]} test:{test}"
+                    )
+                    lines.append(f"    {p.get('summary', '')}")
+                lines.append(
+                    "\n[dim]/evolve approve <name|all>  /evolve reject <name>  "
+                    "/evolve archive  /evolve show <name>[/dim]"
+                )
+                console.print(Panel("\n".join(lines), title="Evolution Staging", border_style="#FFD700"))
+                return True
+
+            sub_parts = parts[1].split(maxsplit=1)
+            action = sub_parts[0].lower()
+            arg = sub_parts[1].strip() if len(sub_parts) > 1 else ""
+
+            if action == "approve":
+                if not arg:
+                    console.print("[bold #E63946]Usage: /evolve approve <name|all>[/]\n")
+                    return True
+                if arg.lower() == "all":
+                    pending = evo_staging.list_pending()
+                    if not pending:
+                        console.print("[dim]No pending skills to approve.[/]\n")
+                        return True
+                    count, msgs = evo_staging.approve_all()
+                    for m in msgs:
+                        console.print(f"  {m}")
+                    if count:
+                        sync_after_evolution(f"evolution: approve all ({count} skills)")
+                    console.print(f"\n[bold #FFD700]✓ Promoted {count} skill(s) to live.[/]\n")
+                    return True
+                ok, msg = evo_staging.approve_skill(arg)
+                if ok:
+                    sync_after_evolution(f"evolution: approve {arg}")
+                    console.print(f"[bold #FFD700]✓ {msg}[/]\n")
+                else:
+                    console.print(f"[bold #E63946]{msg}[/]\n")
+                return True
+
+            if action == "reject":
+                if not arg:
+                    console.print("[bold #E63946]Usage: /evolve reject <name>[/]\n")
+                    return True
+                ok, msg = evo_staging.reject_skill(arg)
+                if ok:
+                    sync_after_evolution(f"evolution: reject {arg}")
+                    console.print(f"[bold #FFD700]✓ {msg}[/]\n")
+                else:
+                    console.print(f"[bold #E63946]{msg}[/]\n")
+                return True
+
+            if action == "archive":
+                rejected = evo_staging.list_rejected()
+                if not rejected:
+                    console.print(Panel("No rejected skills in archive.", title="Evolution Archive", border_style="#FFD700"))
+                    return True
+                lines = ["[bold]Rejected skills (archaeology):[/bold]"]
+                for r in rejected:
+                    test = "pass" if r.get("test_passed") else "fail"
+                    lines.append(
+                        f"  [cyan]{r['name']}[/] [{r.get('source')}] "
+                        f"forged {str(r.get('forged_at', '?'))[:10]} "
+                        f"rejected {str(r.get('rejected_at', '?'))[:10]} test:{test}"
+                    )
+                    lines.append(f"    {r.get('summary', '')}")
+                lines.append("\n[dim]/evolve show <name> for detail[/dim]")
+                console.print(Panel("\n".join(lines), title="Evolution Archive", border_style="#FFD700"))
+                return True
+
+            if action == "show":
+                if not arg:
+                    console.print("[bold #E63946]Usage: /evolve show <name>[/]\n")
+                    return True
+                console.print(
+                    Panel(
+                        evo_staging.format_skill_show(arg),
+                        title=f"Evolution // {arg}",
+                        border_style="#FFD700",
+                    )
+                )
+                return True
+
+            console.print("[bold #E63946]Unknown /evolve action.[/] Use approve, reject, archive, or show.\n")
+            return True
         elif base == "/exit":
             self.shutdown()
             sys.exit(0)
@@ -1198,6 +1317,17 @@ class JarvisTUI:
                                     if new_title:
                                         self.session_title = new_title
                                         console.print(f"\n[bold #00F0FF]⬡ SESSION TITLE SET TO:[/] [bold #FFD700]{new_title}[/]")
+
+                                elif event_type == "approval_required":
+                                    cleanup_live_and_print_accumulators()
+                                    tool_name = data.get("function_name", "desktop action")
+                                    console.print(
+                                        Panel(
+                                            f"Tool: {tool_name}\nApprove or reject in the Web HUD.",
+                                            title="[bold #FFD700]Desktop Action Pending Approval[/]",
+                                            border_style="#FFD700",
+                                        )
+                                    )
 
                                 elif event_type == "voice_ready":
                                     cleanup_live_and_print_accumulators()

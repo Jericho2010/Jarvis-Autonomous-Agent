@@ -256,6 +256,8 @@ If Shaun asks you to gain a *reusable* capability (e.g., "build a tool to search
 3. The new skill becomes available on the next turn.
 
 You have full access to the host OS via `execute_bash`, `read_file_content`, and `write_file_content`. Use them decisively for real tasks, and keep them holstered for mere conversation.
+
+When browser or desktop automation is required, hand off to Homer or Friday via your handoff tools rather than attempting those tasks yourself.
 """
 
 from agent_framework import Agent

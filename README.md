@@ -129,7 +129,7 @@ JARVIS is a native agent built on MAF, using a decoupled, event-driven context p
 | :--- | :--- | :--- |
 | `skills/computer_use.py` | Stark OS-Uplink | Desktop HUD capture, keyboard/mouse actuation, window management |
 | `skills/web_research.py` | Neural Uplink | Tavily/Firecrawl/DuckDuckGo web search and page extraction |
-| `skills/webvision.py` | Optical Uplink | Playwright Chromium browser automation |
+| `@playwright/mcp` (Homer) | Optical Uplink | Headless browser automation via MAF MCPStdioTool |
 | `skills/code_analyzer.py` | Code Matrix | Static analysis and code review helpers |
 | `skills/creative_solver.py` | Lateral Core | Brainstorming and creative ideation |
 | `skills/file_ops.py` | File Access | Filesystem read/write operations |
@@ -153,7 +153,7 @@ The **Hermes Directive** allows JARVIS's personality and skills to self-author b
 - **2026-06-11** - Stark Nomenclature Migration - Transitioned routing and fallback terminology from "dynamic/Trinity" to Stark/Iron Man theme: "Stark Core Matrix" as the model basket config, "Neural Uplink: Dynamic Matrix" as the active routing mode, and "house_party" (Dynamic Multi-Model Protocol) as the default fallback mode.
 - **2026-06-11** - Web Research Skill & Integrations - Integrated Tavily Search and Firecrawl API with custom fallback logic using DuckDuckGo (`ddgs`) and local `httpx` + `lxml` parsing; added keys to `.env` config, updated pyproject.toml dependencies, and verified skill auto-registration and unit test coverage.
 - **2026-06-11** - Asynchronous Web Research & UI - Converted Web Research skill tools (`web_search`, `web_extract`) to fully async coroutines using cached client instances to avoid connection leaks; added thread isolation for synchronous fallbacks like DuckDuckGo to prevent event loop blockages; integrated a Stark-themed neural uplink loading line in `ToolTelemetryMiddleware` for web-grounding operations.
-- **2026-06-11** - WebVision Browser Automation - Integrated Playwright Chromium automation (`webvision_navigate`, `webvision_interact`, `webvision_capture`, `webvision_close`) under `Optical Uplink: WebVision` skill; configured local workspace folder `webvision/` for UI screenshot captures and added it to .gitignore; verified 10/10 test passing rate.
+- **2026-06-20** - Digital Hands — MAF HandoffBuilder routes default chat through Jarvis/Homer/Friday; Homer uses `@playwright/mcp`; Friday kinetic tools require Web HUD approval; captures served at `/v1/captures/`.
 - **2026-06-11** - Stark Core Matrix Failure Toleration - Integrated `max_retries=0` client instantiations and asynchronous mid-stream chunk timeouts (15.0 seconds) to prevent visual freezes during Nvidia NIM oversubscription; confirmed 10/10 test suite execution.
 - **2026-06-11** - Stark OS-Uplink Skill Implementation - Created `skills/computer_use.py` containing retinal HUD scans, kinetic keyboard/mouse actuate linkage, and App Armor active window management via scrot, xdotool, and wmctrl; verified 18/18 test suite execution.
 - **2026-06-11** - Evolving Soul Core Implementation - Modeled the Edwin British butler persona as a native MAF skill (`skills/jarvis_soul/SKILL.md`); updated TUI startup in `src/jarvis/cli.py` to parse and dynamically inject the soul core; aligned nightly subconscious reflections (`src/evolution/subconscious.py`) to run on `StarkNIMChatClient` in `house_party` mode (completely LLaMA-free) and evolve the soul core body paragraph.
