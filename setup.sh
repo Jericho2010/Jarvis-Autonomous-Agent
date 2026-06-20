@@ -53,8 +53,8 @@ if command -v crontab >/dev/null 2>&1; then
     PRAY_CRON="0 2 * * * cd $SCRIPT_DIR && PYTHONPATH=$SCRIPT_DIR/src $SCRIPT_DIR/.venv/bin/python3 -m evolution.subconscious pray >> $SCRIPT_DIR/data/subconscious_cron.log 2>&1"
     DREAM_CRON="0 3 * * * cd $SCRIPT_DIR && PYTHONPATH=$SCRIPT_DIR/src $SCRIPT_DIR/.venv/bin/python3 -m evolution.subconscious dream >> $SCRIPT_DIR/data/subconscious_cron.log 2>&1"
     (crontab -l 2>/dev/null \
+        | grep -F -v "subconscious.py" \
         | grep -F -v "evolution.subconscious" \
-        | grep -F -v "src/evolution/subconscious.py" \
         ; echo "$PRAY_CRON" ; echo "$DREAM_CRON") | crontab -
 else
     echo "JARVIS // crontab not available — skipping subconscious cron setup."

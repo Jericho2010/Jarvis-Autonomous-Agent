@@ -5,6 +5,7 @@ from datetime import datetime
 
 from agent_framework._types import Message
 
+from jarvis.config.models import apply_primary_model
 from jarvis.config.paths import get_db_path, get_evolution_logs_dir, get_staging_dir
 from jarvis.core.agent import StarkNIMChatClient
 from jarvis.memory.memory_manager import MemoryManager
@@ -81,6 +82,7 @@ async def run_dream() -> None:
     await memory.init_db()
 
     client = StarkNIMChatClient(api_key=api_key, base_url="https://integrate.api.nvidia.com/v1")
+    apply_primary_model(client, "house-party")
 
     ctx = await gather_dream_context(memory)
     print("✓ Dream: Ingested 24h memory context.")

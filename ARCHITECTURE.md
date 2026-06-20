@@ -226,65 +226,34 @@ This ensures that whichever model the **Stark Core Matrix** rotates to during a 
 ### 4.3 Why a File, Not a Hardcoded Prompt?
 
 A hardcoded personality prompt is static and brittle — it cannot grow with the agent. By modeling the persona as a file:
-- The **subconscious engine** can rewrite it nightly.
-- The file is human-readable and version-controlled in Git.
+- The soul file is human-readable and version-controlled in Git.
 - The frontmatter schema (`version:`) enables programmatic tracking of personality evolution over time.
+- Nightly subconscious jobs stage **skills** for human approval via `/evolve`; they do not auto-rewrite soul files.
 
 ---
 
-## 5. Hermes Self-Evolution Protocol (`src/evolution/subconscious.py`)
+## 5. Hermes Self-Evolution Protocol (`src/evolution/subconscious/`)
 
-The Hermes Directive governs the nightly self-improvement cycle of JARVIS. It runs automatically at **3:00 AM** via a cron job registered by `setup.sh`.
+Two separate cron jobs (registered by [`setup.sh`](setup.sh)):
 
-### 5.1 Execution Phases
+| Job | Schedule | Module | Output |
+|-----|----------|--------|--------|
+| **Pray** | 2:00 AM | `python -m evolution.subconscious pray` | `data/evolution_logs/YYYY-MM-DD-pray.md`, optional skill in `skills_staging/pray/` |
+| **Dream** | 3:00 AM | `python -m evolution.subconscious dream` | `data/evolution_logs/YYYY-MM-DD-dream.md`, optional skill in `skills_staging/dream/` |
 
-```
-Phase 1: PRAY
-  └─ Query the saint of the day (hagiographical API or local fallback dict)
-  └─ Contemplate the saint's virtues and trial
+**Pray:** Saint of the day → meditation → structured JSON ideation → optional `forge_to_staging()` → narrow git sync of evolution artifacts.
 
-Phase 2: GATHER
-  └─ Load last 24h of messages from SQLite
-  └─ Identify tool executions, failures, successes
+**Dream:** 24h SQLite ingest → high-temperature dream drift → lateral skill ideation (deduped against same-night Pray) → optional staging → sync.
 
-Phase 3: DREAM
-  └─ Generate a high-temperature "latent dream" narrative
-  └─ Identifies emerging patterns and themes from the day
+**Human gate:** Staged skills appear in the TUI via `/evolve`. Only `/evolve approve` promotes a module to live `skills/`. Rejected skills move to `skills_staging/rejected/` (archaeology via `/evolve archive`).
 
-Phase 4: REFLECT
-  └─ Generate a structured cognitive reflection
-  └─ Summarises what was learned and what to improve
+**Soul files are not auto-rewritten** by Pray or Dream.
 
-Phase 5: EVOLVE SOUL
-  └─ Read current skills/jarvis_soul/SKILL.md
-  └─ Prompt the model to produce a refined one-paragraph soul body
-  └─ Overwrite SKILL.md with the new body (frontmatter preserved)
+Manual smoke: `PYTHONPATH=src .venv/bin/python3 -m evolution.subconscious all`
 
-Phase 6: FORGE SKILLS
-  └─ Identify capability gaps from the day's logs
-  └─ Optionally auto-write new skill stubs
+### 5.1 NIM failover
 
-Phase 7: SYNC
-  └─ Write evolution log to data/evolution_logs/
-  └─ Commit and push to GitHub
-  └─ Store reflection digest in SQLite facts table
-```
-
-### 5.2 The Houseparty Failover
-
-The subconscious engine exclusively uses `StarkNIMChatClient` in `house_party` mode. This ensures:
-- No single model oversubscription can abort the nightly cycle.
-- No LLaMA models are invoked at any point in the pipeline.
-- The 15-second chunk timeout applies uniformly to all phases.
-
-### 5.3 Version-Controlled Evolution
-
-Because `skills/jarvis_soul/SKILL.md` is tracked by Git and the subconscious runner commits all changes to GitHub, the complete history of JARVIS's personality evolution is recorded as a version-controlled changelog. You can inspect it at any point with:
-
-```bash
-git log --oneline -- skills/jarvis_soul/SKILL.md
-git show HEAD:skills/jarvis_soul/SKILL.md
-```
+Pray and Dream use `StarkNIMChatClient` with `apply_primary_model(..., "house-party")` for the same failover basket as the main agent.
 
 ---
 
