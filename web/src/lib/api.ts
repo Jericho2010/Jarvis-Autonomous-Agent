@@ -21,79 +21,91 @@ export interface SubagentStatus {
 }
 
 let activePort: number | null = null;
+let cachedApiUrl: string | null = null;
 const START_PORT = 8008;
 const MAX_SCAN = 8;
 
-export async function discoverPort(): Promise<number> {
-  if (activePort !== null) return activePort;
+function isViteDevServer(): boolean {
+  return window.location.port === '5173';
+}
 
-  // If the Web UI is served directly from J.A.R.V.I.S., use that port
-  if (window.location.port && window.location.port !== '5173') {
-    const portNum = parseInt(window.location.port, 10);
-    if (!isNaN(portNum)) {
-      activePort = portNum;
-      return activePort;
-    }
+function portFromLocation(): number {
+  const parsed = parseInt(window.location.port, 10);
+  if (!isNaN(parsed) && parsed > 0) {
+    return parsed;
   }
+  return window.location.protocol === 'https:' ? 443 : 80;
+}
 
-  // First check if a port is specified in query parameters
+async function probeJarvisHealth(baseUrl: string): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 800);
+    const res = await fetch(`${baseUrl}/health`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.service === 'jarvis';
+  } catch {
+    return false;
+  }
+}
+
+async function discoverLocalhostPort(): Promise<number> {
   const params = new URLSearchParams(window.location.search);
   const queryPort = params.get('port');
   if (queryPort) {
     const portNum = parseInt(queryPort, 10);
     if (!isNaN(portNum)) {
-      try {
-        const res = await fetch(`http://127.0.0.1:${portNum}/health`);
-        const data = await res.json();
-        if (data.service === 'jarvis') {
-          activePort = portNum;
-          return activePort;
-        }
-      } catch (e) {
-        // Fall back to scanning
+      const baseUrl = `http://127.0.0.1:${portNum}`;
+      if (await probeJarvisHealth(baseUrl)) {
+        return portNum;
       }
     }
   }
 
-  // Scan ports sequentially
   for (let offset = 0; offset < MAX_SCAN; offset++) {
     const port = START_PORT + offset;
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 800);
-      
-      const res = await fetch(`http://127.0.0.1:${port}/health`, {
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      
-      if (res.ok) {
-        const data = await res.json();
-        if (data.service === 'jarvis') {
-          activePort = port;
-          console.log(`[J.A.R.V.I.S. HUD] Discovered active API server on port ${port}`);
-          return activePort;
-        }
-      }
-    } catch (e) {
-      // Port closed or not jarvis
+    const baseUrl = `http://127.0.0.1:${port}`;
+    if (await probeJarvisHealth(baseUrl)) {
+      console.log(`[J.A.R.V.I.S. HUD] Discovered active API server on port ${port}`);
+      return port;
     }
   }
 
-  // Fallback to default port
   console.warn(`[J.A.R.V.I.S. HUD] No active API server found, using default port ${START_PORT}`);
-  activePort = START_PORT;
   return START_PORT;
 }
 
-export async function getApiUrl(): Promise<string> {
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost.localdomain') {
-    if (window.location.port !== '5173' && window.location.port !== '') {
-      return `${window.location.protocol}//${window.location.host}`;
+export async function discoverPort(): Promise<number> {
+  if (activePort !== null) return activePort;
+
+  if (!isViteDevServer()) {
+    const origin = window.location.origin;
+    if (await probeJarvisHealth(origin)) {
+      activePort = portFromLocation();
+      return activePort;
     }
   }
+
+  activePort = await discoverLocalhostPort();
+  return activePort;
+}
+
+export async function getApiUrl(): Promise<string> {
+  if (cachedApiUrl) return cachedApiUrl;
+
+  if (!isViteDevServer()) {
+    const origin = window.location.origin;
+    if (await probeJarvisHealth(origin)) {
+      cachedApiUrl = origin;
+      return cachedApiUrl;
+    }
+  }
+
   const port = await discoverPort();
-  return `http://127.0.0.1:${port}`;
+  cachedApiUrl = `http://127.0.0.1:${port}`;
+  return cachedApiUrl;
 }
 
 export async function listSessions(): Promise<Session[]> {
