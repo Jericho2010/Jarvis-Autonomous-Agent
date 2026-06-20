@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  discoverPort, 
+  discoverPort,
+  getApiUrl,
   listSessions, 
   createSession, 
   sendChatMessage, 
@@ -99,8 +100,8 @@ export default function App() {
     // Polling server health
     const interval = setInterval(async () => {
       try {
-        const activePortNum = port || 8008;
-        const res = await fetch(`http://127.0.0.1:${activePortNum}/health`);
+        const baseUrl = await getApiUrl();
+        const res = await fetch(`${baseUrl}/health`);
         const data = await res.json();
         if (data.service === 'jarvis') {
           setStatus('online');
