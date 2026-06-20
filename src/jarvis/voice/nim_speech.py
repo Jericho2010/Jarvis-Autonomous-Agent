@@ -19,6 +19,7 @@ from jarvis.config.voice import (
     NIM_SPEECH_GRPC_URI,
     NIM_TTS_FUNCTION_ID,
     TTS_SAMPLE_RATE_HZ,
+    VOICE_RATE_SCALE,
 )
 
 logger = logging.getLogger("jarvis.voice")
@@ -40,16 +41,21 @@ def clean_text_for_speech(text: str) -> str:
         flags=re.DOTALL | re.IGNORECASE,
     )
     cleaned = re.sub(r"\[/?(?:bold|dim|italic|underline|strike)[^\]]*\]", "", cleaned)
+    cleaned = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", cleaned)
     cleaned = re.sub(r"\[/?[^\]]+\]", "", cleaned)
     cleaned = re.sub(r"```[\s\S]*?```", " code block omitted. ", cleaned)
     cleaned = re.sub(r"`([^`]+)`", r"\1", cleaned)
     cleaned = re.sub(r"\*\*([^*]+)\*\*", r"\1", cleaned)
     cleaned = re.sub(r"\*([^*]+)\*", r"\1", cleaned)
     cleaned = re.sub(r"#{1,6}\s+", "", cleaned)
+    cleaned = re.sub(r"\{[^}]*\}", " ", cleaned)
+    cleaned = re.sub(r"<[^>]+>", " ", cleaned)
+    cleaned = re.sub(r"[\[\]{}<>|]", " ", cleaned)
+    cleaned = cleaned.replace("…", "...")
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
 
     if len(cleaned) > MAX_TTS_CHARS:
-        cleaned = cleaned[: MAX_TTS_CHARS - 1].rstrip() + "…"
+        cleaned = cleaned[: MAX_TTS_CHARS - 1].rstrip() + "..."
     return cleaned
 
 
@@ -120,6 +126,24 @@ def resolve_butler_voice(
     return chosen
 
 
+def _pcm_rms(pcm: bytes, sample_width: int = 2) -> float:
+    if not pcm or sample_width != 2:
+        return 0.0
+    count = len(pcm) // 2
+    if count == 0:
+        return 0.0
+    import struct
+
+    samples = struct.unpack(f"<{count}h", pcm[: count * 2])
+    mean_sq = sum(s * s for s in samples) / count
+    return mean_sq ** 0.5
+
+
+def _wav_duration_seconds(wav_bytes: bytes) -> float:
+    with wave.open(io.BytesIO(wav_bytes), "rb") as wav_file:
+        return wav_file.getnframes() / float(wav_file.getframerate())
+
+
 def _pcm_to_wav(pcm: bytes, sample_rate: int, channels: int = 1, sample_width: int = 2) -> bytes:
     buffer = io.BytesIO()
     with wave.open(buffer, "wb") as wav_file:
@@ -150,12 +174,14 @@ def convert_audio_to_wav(audio_bytes: bytes, mime: Optional[str] = None) -> byte
         return audio_bytes
 
     suffix = ".webm"
-    if "ogg" in mime:
+    if "webm" in mime:
+        suffix = ".webm"
+    elif "ogg" in mime:
         suffix = ".ogg"
-    elif "opus" in mime:
-        suffix = ".opus"
     elif "mp4" in mime or "m4a" in mime:
         suffix = ".m4a"
+    elif "opus" in mime:
+        suffix = ".opus"
 
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as inp:
         inp.write(audio_bytes)
@@ -264,10 +290,19 @@ class NIMSpeechClient:
             config_response = self._tts_service.stub.GetRivaSynthesisConfig(
                 self._riva_tts_pb2.RivaSynthesisConfigRequest()
             )
-            voices = set()
+            voices: Set[str] = set()
             for model_config in config_response.model_config:
-                for voice in model_config.voices:
-                    voices.add(voice)
+                params = dict(model_config.parameters)
+                model_voice_name = params.get("voice_name", "Magpie-Multilingual")
+                subvoices = params.get("subvoices", "")
+                if subvoices:
+                    for entry in subvoices.split(","):
+                        subvoice = entry.split(":", 1)[0].strip()
+                        if subvoice:
+                            voices.add(f"{model_voice_name}.{subvoice}")
+                elif hasattr(model_config, "voices"):
+                    for voice in model_config.voices:
+                        voices.add(voice)
             self._available_voices = voices
             return sorted(voices)
         except Exception as exc:
@@ -305,18 +340,39 @@ class NIMSpeechClient:
         )
         if not response.audio:
             raise RuntimeError("TTS returned empty audio")
-        return _pcm_to_wav(response.audio, TTS_SAMPLE_RATE_HZ)
+        # Magpie has no British/older voice and rejects SSML prosody, so we age the delivery
+        # by declaring a lower playback rate in the WAV header: same PCM samples played slower
+        # => deeper pitch and a more measured, distinguished cadence. Honoured by browser and aplay.
+        playback_rate = int(TTS_SAMPLE_RATE_HZ * VOICE_RATE_SCALE)
+        return _pcm_to_wav(response.audio, playback_rate)
 
-    def transcribe(self, audio_bytes: bytes, mime: Optional[str] = None) -> str:
+    def transcribe(self, audio_bytes: bytes, mime: Optional[str] = None) -> dict:
         if not self._asr_service:
             raise RuntimeError(self._init_error or "STT service unavailable")
 
         wav_bytes = convert_audio_to_wav(audio_bytes, mime)
+        duration_s = _wav_duration_seconds(wav_bytes)
         buffer = io.BytesIO(wav_bytes)
         with wave.open(buffer, "rb") as wav_file:
             sample_rate = wav_file.getframerate()
             channels = wav_file.getnchannels()
             pcm = wav_file.readframes(wav_file.getnframes())
+
+        rms = _pcm_rms(pcm)
+        if rms < 150 or duration_s < 0.4:
+            logger.warning(
+                "STT silent/short audio (duration=%.2fs, rms=%.1f, bytes=%d, mime=%s)",
+                duration_s,
+                rms,
+                len(audio_bytes),
+                mime,
+            )
+            return {
+                "text": "",
+                "error": "silent_audio",
+                "duration_s": duration_s,
+                "rms": rms,
+            }
 
         config = self._riva.RecognitionConfig(
             language_code="en-US",
@@ -345,7 +401,21 @@ class NIMSpeechClient:
                 if result.is_final and result.alternatives:
                     transcripts.append(result.alternatives[0].transcript)
 
-        return " ".join(transcripts).strip()
+        transcript = " ".join(transcripts).strip()
+        if not transcript:
+            logger.warning(
+                "STT returned empty transcript (duration=%.2fs, rms=%.1f, bytes=%d, mime=%s)",
+                duration_s,
+                rms,
+                len(audio_bytes),
+                mime,
+            )
+        return {
+            "text": transcript,
+            "error": None if transcript else "empty_transcript",
+            "duration_s": duration_s,
+            "rms": rms,
+        }
 
     def voice_gender(self) -> str:
         voice = self.ensure_voice()

@@ -26,6 +26,14 @@ class TestCleanTextForSpeech:
         assert "`" not in cleaned
         assert "Bold" in cleaned
 
+    def test_strips_tokenizer_sensitive_chars(self):
+        text = "See [broken markup and {json: value} plus |pipes|"
+        cleaned = clean_text_for_speech(text)
+        assert "[" not in cleaned
+        assert "{" not in cleaned
+        assert "|" not in cleaned
+        assert "broken markup" in cleaned
+
 
 class TestResolveButlerVoice:
     def test_prefers_male_calm_voice(self):
@@ -57,7 +65,7 @@ class TestResolveButlerVoice:
 
     def test_fallback_chain_without_catalog(self):
         voice = resolve_butler_voice(available_voices=set())
-        assert "Jason" in voice or "Leo" in voice or "John Van Stan" in voice
+        assert any(speaker in voice for speaker in ("Ray", "Jason", "Leo", "John Van Stan"))
 
 
 @pytest.fixture(autouse=True)
@@ -144,7 +152,12 @@ async def test_voice_stt_endpoint():
     mock_client.tts_available = True
     mock_client.stt_available = True
     mock_client.init_error = None
-    mock_client.transcribe.return_value = "Good evening, Sir."
+    mock_client.transcribe.return_value = {
+        "text": "Good evening, Sir.",
+        "error": None,
+        "duration_s": 2.5,
+        "rms": 500.0,
+    }
 
     with patch("jarvis.server.app.get_speech_client", return_value=mock_client):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:

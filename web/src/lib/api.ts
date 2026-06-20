@@ -231,22 +231,33 @@ export async function synthesizeSpeech(text: string): Promise<Blob | null> {
   }
 }
 
-export async function transcribeAudio(blob: Blob, mimeType = 'audio/webm'): Promise<string | null> {
-  try {
-    const baseUrl = await getApiUrl();
-    const formData = new FormData();
-    formData.append('audio', blob, 'recording.webm');
-    const res = await fetch(`${baseUrl}/v1/voice/stt`, {
-      method: 'POST',
-      body: formData,
-    });
-    if (!res.ok) throw new Error('Failed to transcribe audio');
-    const data = await res.json();
-    return data.text || '';
-  } catch (e) {
-    console.error(e);
-    return null;
+export interface TranscribeResult {
+  text: string;
+  error?: string | null;
+  duration_s?: number;
+  rms?: number;
+}
+
+export async function transcribeAudio(blob: Blob, mimeType = 'audio/webm'): Promise<TranscribeResult> {
+  const baseUrl = await getApiUrl();
+  const formData = new FormData();
+  const ext = mimeType.includes('wav') ? 'wav' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+  formData.append('audio', blob, `recording.${ext}`);
+  const res = await fetch(`${baseUrl}/v1/voice/stt`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(detail || 'Failed to transcribe audio');
   }
+  const data = await res.json();
+  return {
+    text: data.text || '',
+    error: data.error ?? null,
+    duration_s: data.duration_s,
+    rms: data.rms,
+  };
 }
 
 export async function getSessionStream(

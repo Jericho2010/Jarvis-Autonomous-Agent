@@ -690,10 +690,17 @@ export default function App() {
               isRecording={voice.isRecording}
               isTranscribing={voice.isTranscribing}
               isSpeaking={voice.isSpeaking}
+              recordingSeconds={voice.recordingSeconds}
+              audioLevel={voice.audioLevel}
+              micMuted={voice.micMuted}
+              audioInputs={voice.audioInputs}
+              selectedDeviceId={voice.selectedDeviceId}
+              onSelectDevice={voice.setSelectedDeviceId}
+              voiceError={voice.voiceError}
               onStartRecording={voice.startRecording}
               onStopRecording={voice.stopRecording}
-              onToggleVoiceMode={async () => {
-                await voice.toggleVoiceMode();
+              onToggleVoiceMode={async (enabled?: boolean) => {
+                await voice.toggleVoiceMode(enabled);
               }}
             />
           )}

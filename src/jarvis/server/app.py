@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel
 
 from jarvis.config.models import (
@@ -48,6 +49,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class NoCacheIndexMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path in ("", "/", "/index.html"):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
+
+app.add_middleware(NoCacheIndexMiddleware)
 
 @app.get("/health")
 async def health():
@@ -92,6 +106,8 @@ def check_system_dependencies():
 @app.on_event("startup")
 async def on_startup():
     await init_services()
+    # Voice mode always starts disabled; Shaun re-enables it per session via /voicemode on.
+    await memory.upsert_preference(VOICE_MODE_PREF_KEY, False)
     check_system_dependencies()
     logger.info("JARVIS Server Online.")
 
@@ -686,13 +702,13 @@ async def transcribe_voice(audio: UploadFile = File(...)):
         )
     try:
         audio_bytes = await audio.read()
-        transcript = client.transcribe(audio_bytes, audio.content_type)
+        result = client.transcribe(audio_bytes, audio.content_type)
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.exception("STT transcription failed")
         raise HTTPException(status_code=502, detail=str(exc)) from exc
-    return {"text": transcript}
+    return result
 
 def import_json_str(data: dict) -> str:
     import json

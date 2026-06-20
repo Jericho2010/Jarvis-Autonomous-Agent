@@ -17,9 +17,16 @@ interface ChatStreamProps {
   isRecording?: boolean;
   isTranscribing?: boolean;
   isSpeaking?: boolean;
+  recordingSeconds?: number;
+  audioLevel?: number;
+  micMuted?: boolean;
+  audioInputs?: MediaDeviceInfo[];
+  selectedDeviceId?: string;
+  onSelectDevice?: (deviceId: string) => void;
   onStartRecording?: () => void;
   onStopRecording?: () => Promise<string | null>;
-  onToggleVoiceMode?: () => Promise<void>;
+  onToggleVoiceMode?: (enabled?: boolean) => Promise<void>;
+  voiceError?: string | null;
 }
 
 export const ChatStream: React.FC<ChatStreamProps> = ({
@@ -37,9 +44,16 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
   isRecording = false,
   isTranscribing = false,
   isSpeaking = false,
+  recordingSeconds = 0,
+  audioLevel = 0,
+  micMuted = false,
+  audioInputs = [],
+  selectedDeviceId = '',
+  onSelectDevice,
   onStartRecording,
   onStopRecording,
   onToggleVoiceMode,
+  voiceError = null,
 }) => {
   const [input, setInput] = useState('');
   const [showCommands, setShowCommands] = useState(false);
@@ -124,23 +138,24 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
     setShowCommands(false);
   };
 
-  const handleMicPointerDown = async () => {
-    if (!voiceEnabled) {
-      if (onToggleVoiceMode) {
-        await onToggleVoiceMode();
+  const handleMicClick = async () => {
+    if (uploading || !sessionId) return;
+    if (isTranscribing) return;
+
+    if (isRecording) {
+      const transcript = await onStopRecording?.();
+      const text = transcript?.trim();
+      if (text) {
+        setInput('');
+        onSendMessage(text);
       }
       return;
     }
-    if (!onStartRecording) return;
-    await onStartRecording();
-  };
 
-  const handleMicPointerUp = async () => {
-    if (!voiceEnabled || !onStopRecording || !isRecording) return;
-    const transcript = await onStopRecording();
-    if (transcript) {
-      setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+    if (!voiceEnabled && onToggleVoiceMode) {
+      await onToggleVoiceMode(true);
     }
+    await onStartRecording?.();
   };
 
   const parseMessageContent = (text: string) => {
@@ -284,9 +299,34 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
         <div className="bg-stark-gold/10 border-b border-stark-gold/20 px-4 py-1.5 flex items-center gap-2 font-mono text-[10px] text-stark-gold uppercase tracking-widest">
           <Volume2 className={`w-3.5 h-3.5 ${isSpeaking ? 'animate-pulse' : ''}`} />
           <span>Voice Mode · Male Butler · {voiceLabel}</span>
-          {isRecording && <span className="text-stark-red animate-pulse">● Recording</span>}
+          {audioInputs.length > 0 && (
+            <select
+              value={selectedDeviceId}
+              onChange={(e) => onSelectDevice?.(e.target.value)}
+              disabled={isRecording || isTranscribing}
+              title="Select microphone input device"
+              className="bg-black/40 border border-stark-gold/30 text-stark-gold rounded px-1 py-0.5 text-[10px] max-w-[160px] focus:outline-none disabled:opacity-50"
+            >
+              <option value="">Default mic</option>
+              {audioInputs.map((device, idx) => (
+                <option key={device.deviceId || idx} value={device.deviceId}>
+                  {device.label || `Microphone ${idx + 1}`}
+                </option>
+              ))}
+            </select>
+          )}
+          {micMuted && (
+            <span className="text-stark-red normal-case">Mic muted (OS)</span>
+          )}
+          {isRecording && (
+            <span className="text-stark-red animate-pulse">
+              ● Recording {recordingSeconds}s — click mic again when done
+              {audioLevel > 0 ? ` · Mic ${audioLevel}%` : ' · Mic silent?'}
+            </span>
+          )}
           {isTranscribing && <span className="text-stark-cyan animate-pulse">Transcribing…</span>}
           {isSpeaking && <span className="text-stark-cyan animate-pulse">Speaking…</span>}
+          {voiceError && <span className="text-stark-red normal-case">{voiceError}</span>}
         </div>
       ) : (
         <div className="bg-white/5 border-b border-white/10 px-4 py-1.5 flex items-center gap-2 font-mono text-[10px] text-white/40 uppercase tracking-widest">
@@ -447,9 +487,7 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
           </button>
           <button
             type="button"
-            onPointerDown={handleMicPointerDown}
-            onPointerUp={handleMicPointerUp}
-            onPointerLeave={handleMicPointerUp}
+            onClick={handleMicClick}
             disabled={isTranscribing || uploading || !sessionId}
             className={`p-2 rounded-md focus:outline-none transition-all shrink-0 ${
               isRecording
@@ -458,7 +496,13 @@ export const ChatStream: React.FC<ChatStreamProps> = ({
                   ? 'text-stark-gold hover:bg-stark-gold/10'
                   : 'text-white/30 hover:text-stark-gold hover:bg-white/5'
             }`}
-            title={voiceEnabled ? 'Hold to dictate' : 'Click to enable voice mode, then hold to dictate'}
+            title={
+              isRecording
+                ? 'Click to stop and send'
+                : voiceEnabled
+                  ? 'Click to start speaking'
+                  : 'Click to enable voice mode and start speaking'
+            }
           >
             {isRecording ? <MicOff className="w-4.5 h-4.5" /> : <Mic className="w-4.5 h-4.5" />}
           </button>

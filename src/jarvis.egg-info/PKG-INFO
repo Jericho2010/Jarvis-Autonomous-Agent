@@ -21,6 +21,7 @@ Requires-Dist: fastapi>=0.110.0
 Requires-Dist: uvicorn>=0.28.0
 Requires-Dist: httpx>=0.27.0
 Requires-Dist: python-multipart>=0.0.9
+Requires-Dist: nvidia-riva-client>=2.19.0
 Requires-Dist: numpy
 Requires-Dist: nltk
 
@@ -186,3 +187,4 @@ The **Hermes Directive** allows JARVIS's personality and skills to self-author b
 - **2026-06-11** - Documentation — Created `ARCHITECTURE.md` with full deep-dive covering MAF context pipeline, Stark Core Matrix failover, Skills system, SQLite Memory Engine (FTS5), Edwin Soul Core injection, Hermes 7-phase evolution protocol, Stark OS-Uplink tool table, and WebVision Optical Uplink; updated `README.md` with skill roster table and link to architecture doc.
 - **2026-06-14** - Phase V Reciprocal Mirroring & Log Pollution Cleanup — Implemented reciprocal real-time prompt mirroring and server-side client ID exclusion (`tui`/`web`) to prevent prompt echo loops; silenced import-time debug print pollution from Plato skill module files; built React production web UI assets; updated backend unit tests to align with new SSE event structures and confirmed 30/30 test suite execution.
 - **2026-06-14** - Phase VI Dynamic Session Naming, File Attachments, & Agent Switching — Updated SQLite database schema and implemented migrations to track session titles and active agents; implemented FastAPI endpoints for multipart file uploads, content delivery, and SSE agent/title broadcast synchronization; integrated file extraction, autocomplete file mention completers, and `/agent` / `/switch` commands in the TUI; updated the Web UI dashboard with a paperclip upload widget, attached file chips, an in-place active agent roster switcher, and dynamic sidebar session titles; added python-multipart dependency, verified complete Vite web production builds, and updated unit tests (33/33 passing).
+- **2026-06-17** - Autonomous Dependency Resolution & Custom Skill Forging — Resolved missing dependencies (numpy, nltk, scikit-learn) dynamically via uv; implemented local package ignore lists in skill forge to prevent loop checks; downloaded NLTK resources (punkt, punkt_tab, wordnet) under /home/shaun/nltk_data; restored custom forged skills metaphor_analyzer and text_associator.
