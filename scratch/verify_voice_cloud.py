@@ -160,6 +160,47 @@ def check_voice_tts(base_url: str) -> bool:
     return _result("Live TTS synthesis", ok, detail)[0]
 
 
+def check_voice_stt(base_url: str) -> bool:
+    if not os.path.isfile(TTS_OUTPUT):
+        return _result("Live STT transcription", False, f"missing {TTS_OUTPUT}")[0]
+
+    import subprocess
+
+    try:
+        result = subprocess.run(
+            [
+                "curl",
+                "-sf",
+                "-X",
+                "POST",
+                f"{base_url}/v1/voice/stt",
+                "-F",
+                f"audio=@{TTS_OUTPUT};type=audio/wav",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except Exception as exc:
+        return _result("Live STT transcription", False, str(exc))[0]
+
+    if result.returncode != 0:
+        return _result(
+            "Live STT transcription",
+            False,
+            result.stderr.strip() or result.stdout.strip() or f"curl exit {result.returncode}",
+        )[0]
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return _result("Live STT transcription", False, result.stdout[:200])[0]
+
+    text = (payload.get("text") or "").strip()
+    ok = bool(text)
+    return _result("Live STT transcription", ok, f"text={text!r}")[0]
+
+
 def main() -> int:
     base_url = DEFAULT_BASE_URL.rstrip("/")
     print(f"JARVIS cloud voice smoke test — base URL: {base_url}\n")
@@ -173,6 +214,7 @@ def main() -> int:
         lambda: check_voice_status(base_url),
         lambda: check_voice_mode_enable(base_url),
         lambda: check_voice_tts(base_url),
+        lambda: check_voice_stt(base_url),
     ]
 
     results = [check() for check in checks]
@@ -181,7 +223,7 @@ def main() -> int:
     print(f"\nSummary: {passed}/{total} checks passed")
 
     if passed == total:
-        print("Voice backend verified — live NIM gRPC TTS returned WAV audio.")
+        print("Voice backend verified — live NIM gRPC TTS and STT succeeded.")
         return 0
 
     print("Voice backend NOT fully verified — see FAIL lines above.")

@@ -132,7 +132,21 @@ def _pcm_to_wav(pcm: bytes, sample_rate: int, channels: int = 1, sample_width: i
 
 def convert_audio_to_wav(audio_bytes: bytes, mime: Optional[str] = None) -> bytes:
     mime = (mime or "").lower()
-    if mime in ("audio/wav", "audio/x-wav", "audio/wave", "audio/wav; codecs=1"):
+    needs_conversion = mime not in ("audio/wav", "audio/x-wav", "audio/wave", "audio/wav; codecs=1")
+    if not needs_conversion:
+        try:
+            with wave.open(io.BytesIO(audio_bytes), "rb") as wav_file:
+                if (
+                    wav_file.getframerate() == ASR_SAMPLE_RATE_HZ
+                    and wav_file.getnchannels() == 1
+                ):
+                    return audio_bytes
+        except wave.Error:
+            needs_conversion = True
+        else:
+            needs_conversion = True
+
+    if not needs_conversion:
         return audio_bytes
 
     suffix = ".webm"
@@ -196,9 +210,11 @@ class NIMSpeechClient:
 
         try:
             import riva.client
+            from riva.client.proto import riva_tts_pb2
             from riva.client.proto.riva_audio_pb2 import AudioEncoding
 
             self._riva = riva.client
+            self._riva_tts_pb2 = riva_tts_pb2
             self._AudioEncoding = AudioEncoding
             tts_auth = riva.client.Auth(
                 uri=NIM_SPEECH_GRPC_URI,
@@ -246,7 +262,7 @@ class NIMSpeechClient:
 
         try:
             config_response = self._tts_service.stub.GetRivaSynthesisConfig(
-                self._riva.client.proto.riva_tts_pb2.RivaSynthesisConfigRequest()
+                self._riva_tts_pb2.RivaSynthesisConfigRequest()
             )
             voices = set()
             for model_config in config_response.model_config:
@@ -296,15 +312,40 @@ class NIMSpeechClient:
             raise RuntimeError(self._init_error or "STT service unavailable")
 
         wav_bytes = convert_audio_to_wav(audio_bytes, mime)
-        config = self._riva.client.RecognitionConfig(
+        buffer = io.BytesIO(wav_bytes)
+        with wave.open(buffer, "rb") as wav_file:
+            sample_rate = wav_file.getframerate()
+            channels = wav_file.getnchannels()
+            pcm = wav_file.readframes(wav_file.getnframes())
+
+        config = self._riva.RecognitionConfig(
             language_code="en-US",
             max_alternatives=1,
             enable_automatic_punctuation=True,
+            encoding=self._AudioEncoding.LINEAR_PCM,
+            sample_rate_hertz=sample_rate,
+            audio_channel_count=channels,
         )
-        response = self._asr_service.offline_recognize(wav_bytes, config)
-        if not response.results:
-            return ""
-        return response.results[0].alternatives[0].transcript.strip()
+        streaming_config = self._riva.StreamingRecognitionConfig(
+            config=config,
+            interim_results=False,
+        )
+        chunk_bytes = max(sample_rate * channels * 2, 3200)
+        chunks = [
+            pcm[offset : offset + chunk_bytes]
+            for offset in range(0, len(pcm), chunk_bytes)
+        ] or [pcm]
+
+        transcripts: List[str] = []
+        for response in self._asr_service.streaming_response_generator(
+            chunks,
+            streaming_config,
+        ):
+            for result in response.results:
+                if result.is_final and result.alternatives:
+                    transcripts.append(result.alternatives[0].transcript)
+
+        return " ".join(transcripts).strip()
 
     def voice_gender(self) -> str:
         voice = self.ensure_voice()
