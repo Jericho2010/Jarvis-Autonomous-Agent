@@ -1,4 +1,4 @@
-model: "nvidia/stepfun-ai/step-3.7-flash"
+model: "house-party"
 options:
   temperature: 0.2
   max_tokens: 2048

@@ -23,6 +23,12 @@ from jarvis.skills.skill_forge import forge_skill, load_skills_from_dir
 
 logger = logging.getLogger("jarvis.handoff_workflow")
 
+_SPECIALIST_AGENT_IDS = frozenset({"homer", "friday", "plato"})
+_SPECIALIST_CONTINUE = (
+    "Continue the delegated task autonomously. Use your tools. Hand back to Jarvis when complete."
+)
+_MAX_HANDOFF_USER_REQUEST_ITERATIONS = 20
+
 HANDOFF_TRIAGE_INSTRUCTIONS = """
 # DIGITAL HANDS DELEGATION
 You coordinate specialist agents via handoff tools — do not attempt browser or desktop automation yourself.
@@ -196,7 +202,40 @@ def build_handoff_workflow(
             description="Return to Jarvis after analysis or drafting is complete or needs triage.",
         )
     )
-    return builder.with_start_agent(jarvis).build()
+    return (
+        builder.with_start_agent(jarvis)
+        .with_autonomous_mode(
+            agents=[homer, friday, plato],
+            turn_limits={
+                "homer": 12,
+                "friday": 8,
+                "plato": 10,
+            },
+            prompts={
+                "homer": (
+                    "Complete the delegated web research autonomously. "
+                    "Use tools. Hand back to Jarvis when done."
+                ),
+                "friday": (
+                    "Complete the delegated desktop task autonomously. "
+                    "Hand back to Jarvis when done."
+                ),
+                "plato": (
+                    "Complete the delegated analysis autonomously. "
+                    "Hand back to Jarvis when done."
+                ),
+            },
+        )
+        .build()
+    )
+
+
+def _handoff_response_for_request(source_executor_id: Optional[str]) -> list[Any]:
+    """Return MAF continuation payload for a HandoffAgentUserRequest."""
+    agent = (source_executor_id or "").lower()
+    if agent in _SPECIALIST_AGENT_IDS:
+        return HandoffAgentUserRequest.create_response(_SPECIALIST_CONTINUE)
+    return HandoffAgentUserRequest.terminate()
 
 
 def compile_jarvis_instructions(custom_instructions: str) -> str:
@@ -391,11 +430,21 @@ async def _drain_workflow_run(
             if isinstance(event.data, HandoffAgentUserRequest):
                 pending_user_requests.append(event)
 
-    for req in pending_user_requests:
+    iterations = 0
+    while pending_user_requests and iterations < _MAX_HANDOFF_USER_REQUEST_ITERATIONS:
+        iterations += 1
+        batch = pending_user_requests
+        pending_user_requests = []
+        response_map = {
+            req.request_id: _handoff_response_for_request(
+                getattr(req, "source_executor_id", None)
+            )
+            for req in batch
+        }
         nested, nested_text = await _drain_workflow_run(
             session_id,
             state,
-            responses={req.request_id: HandoffAgentUserRequest.terminate()},
+            responses=response_map,
         )
         collected.extend(nested)
         accumulated_text += nested_text

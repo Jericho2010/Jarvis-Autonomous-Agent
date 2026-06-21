@@ -4,7 +4,7 @@ import asyncio
 from typing import Any, AsyncIterable, Awaitable, Callable, Dict, List, Mapping, Optional, Sequence
 from pathlib import Path
 
-from agent_framework import Agent, FunctionMiddleware, FunctionInvocationContext
+from agent_framework import Agent, FunctionMiddleware, FunctionInvocationContext, MiddlewareTermination
 from agent_framework.openai import OpenAIChatCompletionClient
 from agent_framework._clients import BaseChatClient
 from agent_framework._tools import FunctionInvocationLayer
@@ -100,6 +100,14 @@ class ToolTelemetryMiddleware(FunctionMiddleware):
                 title_align="left",
                 padding=(0, 1)
             ))
+        except MiddlewareTermination:
+            if func_name.startswith("handoff_to_") and session_id:
+                target = func_name.removeprefix("handoff_to_")
+                await broadcast_event(session_id, "handoff_initiated", {"target": target})
+                console.print(
+                    f"  [bold #00F0FF]⬡ Handoff:[/] [white]routing to {target.upper()}[/]"
+                )
+            raise
         except Exception as e:
             console.print(f"[bold red]❌ Tool execution failed:[/] {func_name} -> {e}")
             if session_id:

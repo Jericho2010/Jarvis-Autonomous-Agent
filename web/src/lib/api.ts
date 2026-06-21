@@ -302,6 +302,7 @@ export async function getSessionStream(
     'reasoning_chunk', 
     'tool_call_start', 
     'tool_call_complete', 
+    'handoff_initiated',
     'turn_complete', 
     'user_message',
     'agent_changed',

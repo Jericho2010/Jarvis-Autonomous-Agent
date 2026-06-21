@@ -221,6 +221,10 @@ export default function App() {
         
       } else if (type === 'tool_call_complete') {
         const name = data.name || 'tool';
+        const errorText = typeof data.error === 'string' ? data.error : '';
+        if (errorText.includes('Middleware terminated')) {
+          return;
+        }
         const output = data.output || data.error || '';
         setActiveTool(null);
         setActiveToolArgs(null);
@@ -255,6 +259,21 @@ export default function App() {
         const title = data.title || '';
         listSessions().then(setSessions);
         appendLog(`\x1b[36m⬡ SESSION TITLE SET TO: ${title}\x1b[0m`);
+
+      } else if (type === 'handoff_initiated') {
+        const target = (data.target || '').toLowerCase();
+        if (target && ['friday', 'homer', 'plato'].includes(target)) {
+          setSubagents(prev => prev.map(sa =>
+            sa.name === target ? { ...sa, activity: 'working' } : sa
+          ));
+          setCurrentAgent(target);
+          pushGraphEvent({
+            kind: 'handoff',
+            agent: target,
+            detail: `JARVIS → ${target.toUpperCase()} (handoff)`,
+          });
+          appendLog(`\x1b[36m⬡ HANDOFF: JARVIS → ${target.toUpperCase()}\x1b[0m`);
+        }
 
       } else if (type === 'handoff') {
         const agent = (data.agent || '').toLowerCase();

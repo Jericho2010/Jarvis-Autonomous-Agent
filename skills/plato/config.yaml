@@ -1,4 +1,4 @@
-model: "nvidia/deepseek-ai/deepseek-v4-pro"
+model: "house-party"
 options:
   temperature: 0.3
   max_tokens: 4096
