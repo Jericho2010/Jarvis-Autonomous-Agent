@@ -46,6 +46,11 @@ CREATE TABLE IF NOT EXISTS preferences (
 );
 """
 
+PROFILE_EXCLUDED_CATEGORIES = frozenset({"evolution"})
+MAX_PROFILE_FACTS = 15
+MAX_SESSION_SUMMARIES = 3
+REHYDRATE_TURN_LIMIT = 12
+
 FTS_SCHEMA = """
 CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
     content,
@@ -132,10 +137,15 @@ class MemoryManager:
             return msg_id or 0
 
     async def get_session_history(self, session_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Return the most recent `limit` messages in chronological order."""
         async with aiosqlite.connect(self.db_path) as conn:
             conn.row_factory = aiosqlite.Row
             async with conn.execute(
-                "SELECT * FROM messages WHERE session_id = ? AND active = 1 ORDER BY timestamp ASC LIMIT ?",
+                """SELECT * FROM (
+                       SELECT * FROM messages
+                       WHERE session_id = ? AND active = 1
+                       ORDER BY timestamp DESC LIMIT ?
+                   ) ORDER BY timestamp ASC""",
                 (session_id, limit),
             ) as cursor:
                 rows = await cursor.fetchall()
@@ -156,6 +166,53 @@ class MemoryManager:
                         "timestamp": r["timestamp"]
                     })
                 return result
+
+    async def get_recent_session_history(self, session_id: str, limit: int = REHYDRATE_TURN_LIMIT) -> List[Dict[str, Any]]:
+        return await self.get_session_history(session_id, limit=limit)
+
+    async def get_recent_session_summaries(self, limit: int = MAX_SESSION_SUMMARIES) -> List[Dict[str, Any]]:
+        facts = await self.get_facts("session_summary")
+        return facts[:limit]
+
+    async def is_session_finalized(self, session_id: str) -> bool:
+        async with aiosqlite.connect(self.db_path) as conn:
+            conn.row_factory = aiosqlite.Row
+            async with conn.execute(
+                "SELECT ended_at FROM sessions WHERE id = ?",
+                (session_id,),
+            ) as cursor:
+                row = await cursor.fetchone()
+                return row is not None and row["ended_at"] is not None
+
+    async def mark_session_ended(self, session_id: str) -> None:
+        async with aiosqlite.connect(self.db_path) as conn:
+            await conn.execute(
+                "UPDATE sessions SET ended_at = ? WHERE id = ? AND ended_at IS NULL",
+                (time.time(), session_id),
+            )
+            await conn.commit()
+
+    @staticmethod
+    def strip_thinking_blocks(content: str) -> str:
+        if "<think>" in content and "</think>" in content:
+            return content.split("</think>", 1)[1].strip()
+        return content
+
+    async def format_rehydration_block(self, session_id: str, limit: int = REHYDRATE_TURN_LIMIT) -> str:
+        history = await self.get_recent_session_history(session_id, limit=limit)
+        if not history:
+            return ""
+        lines = ["# CONVERSATION RESTORED FROM LOG (server restarted)"]
+        for m in history:
+            role = m.get("role", "")
+            text = self.strip_thinking_blocks(m.get("content") or "").strip()
+            if not text:
+                continue
+            if len(text) > 800:
+                text = text[:800] + "…"
+            label = "User" if role == "user" else "Jarvis"
+            lines.append(f"{label}: {text}")
+        return "\n".join(lines) if len(lines) > 1 else ""
 
     async def search_messages(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Searches past messages across all sessions using SQLite FTS5."""
@@ -258,25 +315,43 @@ class MemoryManager:
     async def build_profile_prompt(self) -> str:
         """Compiles facts and preferences into a consolidated system prompt segment."""
         prefs = await self.get_preferences()
-        facts = await self.get_facts()
-        
+        all_facts = await self.get_facts()
+
+        summaries = await self.get_recent_session_summaries(MAX_SESSION_SUMMARIES)
+        durable = [
+            f for f in all_facts
+            if f["category"] not in PROFILE_EXCLUDED_CATEGORIES
+            and f["category"] != "session_summary"
+        ]
+        durable.sort(key=lambda f: f["created_at"], reverse=True)
+        durable = durable[:MAX_PROFILE_FACTS]
+
         lines = []
         if prefs:
             lines.append("## USER PREFERENCES")
             for k, v in prefs.items():
                 lines.append(f"- {k}: {v}")
-        
-        if facts:
+
+        if summaries:
+            lines.append("## RECENT SESSIONS")
+            for s in summaries:
+                val = s["value"]
+                if not isinstance(val, str):
+                    val = json.dumps(val)
+                if len(val) > 400:
+                    val = val[:400] + "…"
+                lines.append(f"- {s['subject']}: {val}")
+
+        if durable:
             lines.append("## COMPILED OPERATIONAL FACTS")
-            # Group facts by category
             cats: Dict[str, List[str]] = {}
-            for f in facts:
+            for f in durable:
                 cats.setdefault(f["category"], []).append(f"{f['subject']}: {f['value']}")
             for cat, items in cats.items():
                 lines.append(f"### {cat.upper()}")
                 for item in items:
                     lines.append(f"- {item}")
-        
+
         return "\n".join(lines) if lines else "No compiled preference profile available yet."
 
     async def update_session_title(self, session_id: str, title: str) -> None:

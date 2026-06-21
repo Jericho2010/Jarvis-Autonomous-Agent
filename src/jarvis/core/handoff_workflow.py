@@ -18,6 +18,7 @@ from jarvis.core.playwright_mcp import get_playwright_mcp_manager
 from jarvis.core.simple_yaml import parse_simple_yaml
 from jarvis.core.soul import load_compiled_soul
 from jarvis.core.subagents import broadcast_event
+from jarvis.memory.memory_manager import MemoryManager
 from jarvis.skills.skill_forge import forge_skill, load_skills_from_dir
 
 logger = logging.getLogger("jarvis.handoff_workflow")
@@ -48,6 +49,8 @@ Route to **Plato** when:
 Plato handoff MUST include: tool name, full error output, file paths, what you already tried.
 
 Handle greetings, opinions, and general conversation directly in character. Only hand off when specialist work is required.
+
+Use `recall_past_chats` when Shaun references earlier sessions, past decisions, or asks what was discussed before.
 
 # AFTER SPECIALIST RETURNS
 1. Preserve evidence — do not strip URLs, capture paths, file:line citations, or confidence levels.
@@ -212,6 +215,7 @@ def resolve_subagent_model(name: str, fallback: str) -> str:
 class SessionWorkflowState:
     workflow: Workflow
     session_model: str
+    rehydrated: bool = False
     approval_event: asyncio.Event = field(default_factory=asyncio.Event)
     pending_approval: Optional[WorkflowEvent] = None
     approval_result: Optional[Any] = None
@@ -227,10 +231,17 @@ async def get_or_create_workflow_state(
     api_key: str,
     jarvis_instructions: str,
     session_model: str,
+    memory: Optional[MemoryManager] = None,
 ) -> SessionWorkflowState:
     existing = _session_states.get(session_id)
     if existing is not None and existing.session_model == session_model:
         return existing
+
+    instructions = jarvis_instructions
+    if memory is not None:
+        block = await memory.format_rehydration_block(session_id)
+        if block:
+            instructions = f"{instructions}\n\n{block}"
 
     mcp_tool: Optional[MCPStdioTool] = None
     manager = get_playwright_mcp_manager()
@@ -245,14 +256,18 @@ async def get_or_create_workflow_state(
 
     workflow = build_handoff_workflow(
         api_key=api_key,
-        jarvis_instructions=compile_jarvis_instructions(jarvis_instructions),
+        jarvis_instructions=compile_jarvis_instructions(instructions),
         session_model=session_model,
         homer_model=resolve_subagent_model("homer", session_model),
         friday_model=resolve_subagent_model("friday", session_model),
         plato_model=resolve_subagent_model("plato", session_model),
         mcp_tool=mcp_tool,
     )
-    state = SessionWorkflowState(workflow=workflow, session_model=session_model)
+    state = SessionWorkflowState(
+        workflow=workflow,
+        session_model=session_model,
+        rehydrated=bool(memory),
+    )
     _session_states[session_id] = state
     return state
 
@@ -395,12 +410,14 @@ async def run_handoff_turn(
     api_key: str,
     jarvis_instructions: str,
     session_model: str,
+    memory: Optional[MemoryManager] = None,
 ) -> str:
     state = await get_or_create_workflow_state(
         session_id,
         api_key=api_key,
         jarvis_instructions=jarvis_instructions,
         session_model=session_model,
+        memory=memory,
     )
     async with state.turn_lock:
         _, accumulated_text = await _drain_workflow_run(session_id, state, message=user_message)

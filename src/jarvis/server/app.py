@@ -27,6 +27,7 @@ from jarvis.config.paths import (
     get_webvision_dir,
 )
 from jarvis.memory.memory_manager import MemoryManager
+from jarvis.memory.extractor import finalize_session
 from jarvis.core.agent import create_jarvis_agent, DEFAULT_SYSTEM_PROMPT
 from jarvis.core.display_env import log_startup_display_warning
 from jarvis.core.handoff_workflow import clear_workflow_state, run_handoff_turn, submit_approval
@@ -149,6 +150,23 @@ class ApprovalRequest(BaseModel):
     request_id: str
     approved: bool
 
+class CreateSessionRequest(BaseModel):
+    finalize_session_id: Optional[str] = None
+
+
+def schedule_session_finalize(session_id: Optional[str]) -> None:
+    if not session_id:
+        return
+    api_key = os.environ.get("NVIDIA_API_KEY", "")
+
+    async def _run() -> None:
+        try:
+            await finalize_session(memory, session_id, api_key=api_key)
+        except Exception:
+            logger.exception("Background session finalize failed for %s", session_id)
+
+    asyncio.create_task(_run())
+
 @app.get("/v1/sessions")
 async def list_sessions():
     await init_services()
@@ -192,8 +210,9 @@ async def list_sessions():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/v1/sessions")
-async def create_session():
+async def create_session(req: CreateSessionRequest = CreateSessionRequest()):
     await init_services()
+    schedule_session_finalize(req.finalize_session_id)
     try:
         import random
         session_id = f"session_{int(asyncio.get_event_loop().time())}_{random.randint(1000, 9999)}"
@@ -226,6 +245,14 @@ async def create_session():
     except Exception as e:
         logger.exception("Failed to create session")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/v1/sessions/{session_id}/finalize")
+async def finalize_session_endpoint(session_id: str):
+    """Background-learn from a session (summary + facts). Idempotent."""
+    await init_services()
+    schedule_session_finalize(session_id)
+    return {"status": "scheduled", "session_id": session_id}
 
 def synthesize_title(message: str) -> str:
     import re
@@ -319,6 +346,7 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
                 api_key=os.environ.get("NVIDIA_API_KEY", ""),
                 jarvis_instructions=custom_instructions,
                 session_model=session_model,
+                memory=memory,
             )
         elif active_agent_id in ("friday", "homer", "plato"):
             subagent_dir = get_subagent_dir(active_agent_id)
@@ -403,6 +431,7 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
                 api_key=os.environ.get("NVIDIA_API_KEY", ""),
                 jarvis_instructions=custom_instructions,
                 session_model=session_model,
+                memory=memory,
             )
         
         if accumulated_text.strip():

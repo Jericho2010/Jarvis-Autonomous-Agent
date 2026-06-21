@@ -4,6 +4,7 @@ import {
   getApiUrl,
   listSessions, 
   createSession, 
+  finalizeSession,
   sendChatMessage, 
   getSessionStream, 
   Session, 
@@ -589,13 +590,23 @@ export default function App() {
 
   const handleNewSession = async () => {
     try {
-      const newId = await createSession();
+      const newId = await createSession(currentSessionId ?? undefined);
       setCurrentSessionId(newId);
       const updatedList = await listSessions();
       setSessions(updatedList);
     } catch (e) {
       console.error('Failed to create new session:', e);
     }
+  };
+
+  const handleSelectSession = (sessionId: string) => {
+    if (sessionId === currentSessionId) return;
+    if (currentSessionId) {
+      finalizeSession(currentSessionId).catch((e) =>
+        console.error('Failed to finalize session:', e)
+      );
+    }
+    setCurrentSessionId(sessionId);
   };
 
   const handleApproval = async (approved: boolean) => {
@@ -683,7 +694,7 @@ export default function App() {
           {sessions.map((s) => (
             <button
               key={s.session_id}
-              onClick={() => setCurrentSessionId(s.session_id)}
+              onClick={() => handleSelectSession(s.session_id)}
               className={`w-full text-left p-2 rounded text-xs font-mono flex items-center justify-between transition-all border ${
                 currentSessionId === s.session_id
                   ? 'bg-stark-cyan/5 border-stark-cyan/25 text-stark-cyan glow-cyan'

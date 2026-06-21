@@ -120,14 +120,25 @@ export async function listSessions(): Promise<Session[]> {
   }
 }
 
-export async function createSession(): Promise<string> {
+export async function createSession(finalizeSessionId?: string): Promise<string> {
   const baseUrl = await getApiUrl();
+  const body = finalizeSessionId ? { finalize_session_id: finalizeSessionId } : {};
   const res = await fetch(`${baseUrl}/v1/sessions`, {
-    method: 'POST'
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error('Failed to create session');
   const data = await res.json();
   return data.session_id;
+}
+
+export async function finalizeSession(sessionId: string): Promise<void> {
+  const baseUrl = await getApiUrl();
+  const res = await fetch(`${baseUrl}/v1/sessions/${sessionId}/finalize`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error('Failed to finalize session');
 }
 
 export async function approveToolAction(

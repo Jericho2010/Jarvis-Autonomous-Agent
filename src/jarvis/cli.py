@@ -750,7 +750,14 @@ class JarvisTUI:
         elif base == "/new":
             async with httpx.AsyncClient() as client:
                 try:
-                    res = await client.post(f"http://127.0.0.1:{self.port}/v1/sessions", timeout=5.0)
+                    payload = {}
+                    if self.session_id:
+                        payload["finalize_session_id"] = self.session_id
+                    res = await client.post(
+                        f"http://127.0.0.1:{self.port}/v1/sessions",
+                        json=payload,
+                        timeout=5.0,
+                    )
                     self.session_id = res.json()["session_id"]
                     try:
                         session_details = await client.get(f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}", timeout=5.0)
