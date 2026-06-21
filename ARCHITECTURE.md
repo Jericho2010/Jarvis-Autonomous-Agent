@@ -270,6 +270,8 @@ The computer use skill (`skills/computer_use.py`) grants JARVIS the ability to d
 | `stark_os_kinetic_type` | `xdotool` | Type a text string at current keyboard focus (**approval required**). |
 | `stark_os_kinetic_key` | `xdotool` | Press a key or keyboard shortcut (**approval required**). |
 | `stark_os_armor_list_windows` | `wmctrl` | List all active X11 windows with metadata. |
+| `stark_os_armor_list_apps` | `.desktop` index | Search installed applications by name or keyword. |
+| `stark_os_armor_launch_app` | `gtk-launch` / `gio` / `Exec` | Launch a GUI app by name (**approval required**). |
 | `stark_os_armor_focus_window` | `wmctrl` | Bring a window matching a title pattern to the foreground (**approval required**). |
 
 Captures are exposed via `GET /v1/captures/{filename}` and referenced in tool JSON as `"url": "/v1/captures/..."`.
