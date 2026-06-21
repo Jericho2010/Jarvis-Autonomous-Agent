@@ -11,11 +11,12 @@ export const ConsoleHUD: React.FC<ConsoleHUDProps> = ({ logs }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const lastWrittenIndexRef = useRef(0);
+  const headerWrittenRef = useRef(false);
 
   useEffect(() => {
     if (!terminalRef.current) return;
 
-    // Initialize Terminal
     const term = new Terminal({
       cursorBlink: true,
       theme: {
@@ -27,11 +28,11 @@ export const ConsoleHUD: React.FC<ConsoleHUDProps> = ({ logs }) => {
         green: '#4ade80',
         yellow: '#ffd700',
         blue: '#3b82f6',
-        cyan: '#00f0ff'
+        cyan: '#00f0ff',
       },
       fontFamily: 'Geist Mono, ui-monospace, monospace',
       fontSize: 12,
-      lineHeight: 1.2
+      lineHeight: 1.2,
     });
 
     const fitAddon = new FitAddon();
@@ -41,37 +42,53 @@ export const ConsoleHUD: React.FC<ConsoleHUDProps> = ({ logs }) => {
 
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
+    lastWrittenIndexRef.current = 0;
+    headerWrittenRef.current = false;
 
-    term.writeln('\x1b[1;33m⬡ J.A.R.V.I.S. // MARK XLVIII DIAGNOSTICS CONSOLE\x1b[0m');
-    term.writeln('\x1b[1;36m[System Online] Connection Matrix Initialized.\x1b[0m\r\n');
-
-    // Handle resizing
     const handleResize = () => {
-      if (fitAddonRef.current) {
-        fitAddonRef.current.fit();
-      }
+      fitAddonRef.current?.fit();
     };
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
       term.dispose();
+      xtermRef.current = null;
+      lastWrittenIndexRef.current = 0;
+      headerWrittenRef.current = false;
     };
   }, []);
 
-  // Write new logs to the terminal
   useEffect(() => {
-    if (!xtermRef.current || logs.length === 0) return;
-    
-    // Clear and re-write logs to preserve order and avoid duplication on re-render
-    xtermRef.current.clear();
-    xtermRef.current.writeln('\x1b[1;33m⬡ J.A.R.V.I.S. // MARK XLVIII DIAGNOSTICS CONSOLE\x1b[0m');
-    xtermRef.current.writeln('\x1b[1;36m[System Online] Connection Matrix Initialized.\x1b[0m\r\n');
-    
-    logs.forEach(log => {
-      // Clean and write log line
-      xtermRef.current?.writeln(log);
-    });
+    const term = xtermRef.current;
+    if (!term) return;
+
+    if (logs.length === 0) {
+      term.clear();
+      lastWrittenIndexRef.current = 0;
+      headerWrittenRef.current = false;
+      return;
+    }
+
+    if (!headerWrittenRef.current) {
+      term.clear();
+      term.writeln('\x1b[1;33m⬡ J.A.R.V.I.S. // SESSION DIAGNOSTICS LOG\x1b[0m');
+      term.writeln('\x1b[1;36m[System Online] Streaming session events.\x1b[0m\r\n');
+      headerWrittenRef.current = true;
+      lastWrittenIndexRef.current = 0;
+    }
+
+    if (lastWrittenIndexRef.current > logs.length) {
+      term.clear();
+      term.writeln('\x1b[1;33m⬡ J.A.R.V.I.S. // SESSION DIAGNOSTICS LOG\x1b[0m');
+      term.writeln('\x1b[1;36m[System Online] Streaming session events.\x1b[0m\r\n');
+      lastWrittenIndexRef.current = 0;
+    }
+
+    for (let i = lastWrittenIndexRef.current; i < logs.length; i += 1) {
+      term.writeln(logs[i]);
+    }
+    lastWrittenIndexRef.current = logs.length;
   }, [logs]);
 
   return (
@@ -79,9 +96,9 @@ export const ConsoleHUD: React.FC<ConsoleHUDProps> = ({ logs }) => {
       <div className="p-3 border-b border-white/5 bg-stark-panel/30 flex items-center justify-between shrink-0 font-mono text-[10px] text-white/50">
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-stark-cyan animate-pulse" />
-          <span>STARK_CORE_STREAM.LOG</span>
+          <span>SESSION_EVENT.LOG</span>
         </div>
-        <span>TTY // ACTIVE CONNECTION</span>
+        <span>LOG // STREAM</span>
       </div>
       <div className="flex-1 p-3 min-h-0 overflow-hidden">
         <div ref={terminalRef} className="w-full h-full" />

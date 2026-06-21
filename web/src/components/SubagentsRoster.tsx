@@ -6,18 +6,22 @@ interface SubagentsRosterProps {
   subagents: SubagentStatus[];
   currentAgentId: string;
   onSwitchAgent: (agentId: string) => void;
+  inspectAgent?: string | null;
+  onInspectAgentClose?: () => void;
 }
 
 export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({ 
   subagents,
   currentAgentId,
-  onSwitchAgent
+  onSwitchAgent,
+  inspectAgent = null,
+  onInspectAgentClose,
 }) => {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
   const [details, setDetails] = useState<SubagentDetail | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleAgentClick = async (name: string) => {
+  const openProfile = async (name: string) => {
     const cleanName = name.toLowerCase();
     if (!['friday', 'homer', 'plato'].includes(cleanName)) return;
 
@@ -33,6 +37,16 @@ export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({
       setLoading(false);
     }
   };
+
+  const handleAgentClick = async (name: string) => {
+    await openProfile(name);
+  };
+
+  React.useEffect(() => {
+    if (inspectAgent) {
+      void openProfile(inspectAgent);
+    }
+  }, [inspectAgent]);
   
   const getAgentIcon = (name: string) => {
     const n = name.toLowerCase();
@@ -49,7 +63,7 @@ export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({
           color: 'text-stark-cyan',
           bgColor: 'bg-stark-cyan/10',
           dotColor: 'bg-stark-cyan',
-          label: '夢想 // Dreaming'
+          label: 'Working',
         };
       case 'awaiting':
         return {
@@ -63,7 +77,7 @@ export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({
           color: 'text-green-400',
           bgColor: 'bg-green-400/10',
           dotColor: 'bg-green-400',
-          label: 'Offline // Idle'
+          label: 'Idle',
         };
       case 'failed':
         return {
@@ -77,7 +91,7 @@ export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({
           color: 'text-white/40',
           bgColor: 'bg-white/5',
           dotColor: 'bg-white/20',
-          label: 'Offline // Idle'
+          label: 'Idle',
         };
     }
   };
@@ -87,10 +101,14 @@ export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({
       <div className="p-4 border-b border-white/5">
         <h2 className="text-xs font-mono font-bold tracking-widest text-stark-cyan flex items-center gap-1.5">
           <Cpu className="w-3.5 h-3.5" />
-          COGNITIVE MATRIX
+          AGENT ROSTER
         </h2>
+        <p className="text-[9px] font-mono text-white/35 mt-1.5 leading-relaxed">
+          {currentAgentId === 'jarvis'
+            ? 'Handoff mode — Jarvis delegates to Homer, Friday, and Plato.'
+            : `Direct mode — locked to ${currentAgentId.toUpperCase()}. Select Jarvis to restore handoff.`}
+        </p>
       </div>
-      
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {/* Core J.A.R.V.I.S. node */}
         <div 
@@ -213,7 +231,7 @@ export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({
                 </div>
               </div>
               <button 
-                onClick={() => { setSelectedAgent(null); setDetails(null); }}
+                onClick={() => { setSelectedAgent(null); setDetails(null); onInspectAgentClose?.(); }}
                 className="text-white/45 hover:text-stark-red transition-colors font-mono text-xs border border-white/10 hover:border-stark-red/30 px-2 py-1 rounded bg-white/5 cursor-pointer"
               >
                 CLOSE [X]
@@ -276,6 +294,7 @@ export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({
                       onSwitchAgent(selectedAgent.toLowerCase());
                       setSelectedAgent(null);
                       setDetails(null);
+                      onInspectAgentClose?.();
                     }}
                     className="text-xs font-mono bg-stark-gold/15 hover:bg-stark-gold/25 text-stark-gold border border-stark-gold/20 px-3 py-1.5 rounded transition-all glow-gold cursor-pointer"
                   >
@@ -284,7 +303,7 @@ export const SubagentsRoster: React.FC<SubagentsRosterProps> = ({
                 )}
               </div>
               <button 
-                onClick={() => { setSelectedAgent(null); setDetails(null); }}
+                onClick={() => { setSelectedAgent(null); setDetails(null); onInspectAgentClose?.(); }}
                 className="text-xs font-mono bg-stark-cyan/15 hover:bg-stark-cyan/25 text-stark-cyan border border-stark-cyan/20 px-3 py-1.5 rounded transition-all glow-cyan cursor-pointer"
               >
                 PROCEED

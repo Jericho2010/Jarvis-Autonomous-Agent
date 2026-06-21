@@ -326,11 +326,12 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
             soul_file = subagent_dir / f"{active_agent_id}_soul.md"
             
             from jarvis.core.subagents import parse_simple_yaml
+            from jarvis.core.soul import load_compiled_soul
             from agent_framework import Agent
             from jarvis.core.agent import StarkNIMChatClient
             
             config = parse_simple_yaml(config_file.read_text(encoding="utf-8"))
-            instructions = soul_file.read_text(encoding="utf-8").strip()
+            _, instructions = load_compiled_soul(active_agent_id)
             
             model = config.get("model", "house-party")
             sub_tools = load_skills_from_dir(subagent_dir)
@@ -568,6 +569,7 @@ async def get_subagent_detail(name: str):
     try:
         from pathlib import Path
         from jarvis.core.subagents import parse_simple_yaml
+        from jarvis.core.soul import load_compiled_soul
         from jarvis.skills.skill_forge import load_skills_from_dir
         
         subagent_dir = get_subagent_dir(name_clean)
@@ -578,17 +580,27 @@ async def get_subagent_detail(name: str):
             raise HTTPException(status_code=404, detail="Subagent configuration missing")
             
         config = parse_simple_yaml(config_file.read_text(encoding="utf-8"))
-        instructions = soul_file.read_text(encoding="utf-8").strip()
+        doc, instructions = load_compiled_soul(name_clean)
 
         model = normalize_session_model(config.get("model", "house-party"))
         tools_list = load_skills_from_dir(subagent_dir)
         tools = [{"name": t.name, "description": t.description} for t in tools_list]
+
+        fm = doc.frontmatter
+        meta = {
+            "role": fm.get("role"),
+            "version": fm.get("version"),
+            "output_contract": fm.get("output_contract"),
+            "owns": fm.get("owns") if isinstance(fm.get("owns"), list) else [],
+            "forbidden": fm.get("forbidden") if isinstance(fm.get("forbidden"), list) else [],
+        }
         
         return {
             "name": name_clean.upper(),
             "model": model,
             "instructions": instructions,
-            "tools": tools
+            "tools": tools,
+            "meta": meta,
         }
     except Exception as e:
         logger.exception(f"Failed to load subagent {name}")

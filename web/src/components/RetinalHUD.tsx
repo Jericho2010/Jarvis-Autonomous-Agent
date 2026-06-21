@@ -24,7 +24,7 @@ export const RetinalHUD: React.FC<RetinalHUDProps> = ({ screenshotUrl }) => {
           <Eye className="w-3.5 h-3.5 text-stark-red" />
           <span>OPTICAL RETINAL HUD // VISION OVERLAY</span>
         </div>
-        <span className="text-stark-red animate-pulse">LIVE EYE DIRECT</span>
+          <span>LAST CAPTURE</span>
       </div>
 
       {/* Main viewport */}

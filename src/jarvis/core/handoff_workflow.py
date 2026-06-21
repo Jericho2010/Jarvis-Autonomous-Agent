@@ -1,4 +1,4 @@
-"""MAF HandoffBuilder workflow for Jarvis / Homer / Friday digital hands."""
+"""MAF HandoffBuilder workflow for Jarvis / Homer / Friday / Plato digital hands."""
 
 from __future__ import annotations
 
@@ -15,7 +15,9 @@ from jarvis.config.models import apply_primary_model
 from jarvis.config.paths import get_skills_dir, get_subagent_dir
 from jarvis.core.agent import DEFAULT_SYSTEM_PROMPT, StarkNIMChatClient
 from jarvis.core.playwright_mcp import get_playwright_mcp_manager
-from jarvis.core.subagents import broadcast_event, parse_simple_yaml
+from jarvis.core.simple_yaml import parse_simple_yaml
+from jarvis.core.soul import load_compiled_soul
+from jarvis.core.subagents import broadcast_event
 from jarvis.skills.skill_forge import forge_skill, load_skills_from_dir
 
 logger = logging.getLogger("jarvis.handoff_workflow")
@@ -24,28 +26,46 @@ HANDOFF_TRIAGE_INSTRUCTIONS = """
 # DIGITAL HANDS DELEGATION
 You coordinate specialist agents via handoff tools — do not attempt browser or desktop automation yourself.
 
-Route to **Homer** when the task needs:
-- Live web pages, browser navigation, form interaction, or page screenshots
-- Deep web research beyond a quick conversational answer
+Route to **Homer** when:
+- The question needs **current web data** you cannot confidently answer from memory
+- Live pages, forms, browser screenshots, or multi-source verification with citations
+- Official docs, changelogs, pricing, news, or comparisons beyond a quick reply
 
-Route to **Friday** when the task needs:
-- Desktop interaction (clicks, typing, scrolling, window focus)
-- Full-screen capture of the Linux desktop (Retinal HUD)
+Homer handoff MUST include: the question, any known URLs, depth (quick vs deep).
 
-Handle greetings, opinions, and general conversation directly in character. Only hand off when real browser or desktop work is required.
-After a specialist completes work, summarize results for Shaun in your butler voice.
+Route to **Friday** when:
+- Desktop screenshot (Retinal HUD) is needed — capture-only or before kinetic work
+- Native app interaction: click, type, scroll, window focus (not browser)
+- The task cannot be done via bash/file tools alone
+
+Friday handoff MUST include: target app/window, desired end state, kinetic authorization, destructive-action flag if applicable.
+
+Route to **Plato** when:
+- `forge_skill` fails or a skill in `skills/` / `skills_staging/` needs audit
+- `execute_bash` or `read_file_content` / `write_file_content` fails and root-cause is unclear
+- Code review, architecture critique, or technical decomposition is needed
+
+Plato handoff MUST include: tool name, full error output, file paths, what you already tried.
+
+Handle greetings, opinions, and general conversation directly in character. Only hand off when specialist work is required.
+
+# AFTER SPECIALIST RETURNS
+1. Preserve evidence — do not strip URLs, capture paths, file:line citations, or confidence levels.
+2. Summarize for Shaun in your butler voice; specialist output is source of truth.
+3. Act on next steps when safe:
+   - Homer "Next steps for Jarvis" → delegate or answer locally
+   - Friday "Blockers" → explain approval/desktop guard; retry if appropriate
+   - Plato "Recommendations for Jarvis" → attempt top recommendation via forge_skill/bash/file ops
+4. Do not re-do specialist work unless it failed.
 """
 
 
-def _load_soul_body(path) -> str:
-    if not path.exists():
-        return ""
-    content = path.read_text(encoding="utf-8")
-    if content.startswith("---"):
-        parts = content.split("---", 2)
-        if len(parts) >= 3:
-            return parts[2].strip()
-    return content.strip()
+def _compiled_soul_instructions(name: str, fallback: str) -> str:
+    try:
+        _, compiled = load_compiled_soul(name)
+        return compiled or fallback
+    except FileNotFoundError:
+        return fallback
 
 
 def _homer_tools(mcp_tool: Optional[MCPStdioTool]) -> list[Any]:
@@ -60,6 +80,10 @@ def _friday_tools() -> list[Any]:
     return load_skills_from_dir(get_subagent_dir("friday"))
 
 
+def _plato_tools() -> list[Any]:
+    return load_skills_from_dir(get_subagent_dir("plato"))
+
+
 def _jarvis_tools() -> list[Any]:
     root_skills = load_skills_from_dir(get_skills_dir())
     return [forge_skill] + root_skills
@@ -72,15 +96,18 @@ def build_handoff_workflow(
     session_model: str,
     homer_model: str,
     friday_model: str,
+    plato_model: str,
     mcp_tool: Optional[MCPStdioTool],
 ) -> Workflow:
     jarvis_client = StarkNIMChatClient(api_key=api_key)
     homer_client = StarkNIMChatClient(api_key=api_key)
     friday_client = StarkNIMChatClient(api_key=api_key)
+    plato_client = StarkNIMChatClient(api_key=api_key)
 
     apply_primary_model(jarvis_client, session_model)
     apply_primary_model(homer_client, homer_model)
     apply_primary_model(friday_client, friday_model)
+    apply_primary_model(plato_client, plato_model)
 
     jarvis = Agent(
         id="jarvis",
@@ -91,7 +118,10 @@ def build_handoff_workflow(
         require_per_service_call_history_persistence=True,
     )
 
-    homer_soul = _load_soul_body(get_subagent_dir("homer") / "homer_soul.md")
+    homer_soul = _compiled_soul_instructions(
+        "homer",
+        "You are Homer, web research and browser automation specialist.",
+    )
     homer = Agent(
         id="homer",
         name="homer",
@@ -101,7 +131,10 @@ def build_handoff_workflow(
         require_per_service_call_history_persistence=True,
     )
 
-    friday_soul = _load_soul_body(get_subagent_dir("friday") / "friday_soul.md")
+    friday_soul = _compiled_soul_instructions(
+        "friday",
+        "You are Friday, desktop automation specialist.",
+    )
     friday = Agent(
         id="friday",
         name="friday",
@@ -111,9 +144,22 @@ def build_handoff_workflow(
         require_per_service_call_history_persistence=True,
     )
 
+    plato_soul = _compiled_soul_instructions(
+        "plato",
+        "You are Plato, code analysis and strategy specialist.",
+    )
+    plato = Agent(
+        id="plato",
+        name="plato",
+        client=plato_client,
+        instructions=plato_soul or "You are Plato, code analysis and strategy specialist.",
+        tools=_plato_tools(),
+        require_per_service_call_history_persistence=True,
+    )
+
     builder = HandoffBuilder(
         name="jarvis_digital_hands",
-        participants=[jarvis, homer, friday],
+        participants=[jarvis, homer, friday, plato],
     )
     (
         builder.add_handoff(
@@ -127,6 +173,11 @@ def build_handoff_workflow(
             description="Desktop clicks, typing, scrolling, window focus, or screen capture.",
         )
         .add_handoff(
+            jarvis,
+            [plato],
+            description="Code review, static analysis, architecture critique, or technical drafting.",
+        )
+        .add_handoff(
             homer,
             [jarvis],
             description="Return to Jarvis after browser work is complete or needs triage.",
@@ -135,6 +186,11 @@ def build_handoff_workflow(
             friday,
             [jarvis],
             description="Return to Jarvis after desktop work is complete or needs triage.",
+        )
+        .add_handoff(
+            plato,
+            [jarvis],
+            description="Return to Jarvis after analysis or drafting is complete or needs triage.",
         )
     )
     return builder.with_start_agent(jarvis).build()
@@ -193,6 +249,7 @@ async def get_or_create_workflow_state(
         session_model=session_model,
         homer_model=resolve_subagent_model("homer", session_model),
         friday_model=resolve_subagent_model("friday", session_model),
+        plato_model=resolve_subagent_model("plato", session_model),
         mcp_tool=mcp_tool,
     )
     state = SessionWorkflowState(workflow=workflow, session_model=session_model)

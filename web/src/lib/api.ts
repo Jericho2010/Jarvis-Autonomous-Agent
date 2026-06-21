@@ -320,6 +320,13 @@ export interface SubagentDetail {
   model: string;
   instructions: string;
   tools: { name: string; description: string }[];
+  meta?: {
+    role?: string;
+    version?: string | number;
+    output_contract?: string;
+    owns?: string[];
+    forbidden?: string[];
+  };
 }
 
 export async function getSessionHistory(sessionId: string): Promise<ChatMessage[]> {

@@ -31,13 +31,32 @@ async def test_load_and_run_subagent(tmp_path):
     config_file.write_text("model: 'test-model'\noptions:\n  temperature: 0.1\n")
     
     soul_file = subagent_dir / "friday_soul.md"
-    soul_file.write_text("You are F.R.I.D.A.Y.")
+    soul_file.write_text("""---
+name: FRIDAY
+agent_id: friday
+version: 1.0
+role: Test
+reports_to: jarvis
+owns:
+  - testing
+forbidden:
+  - nothing
+tools:
+  - test_tool
+output_contract: test_v1
+---
+
+You are F.R.I.D.A.Y. test agent.
+""")
     
     # Mock StarkNIMChatClient and load_skills_from_dir
     with patch("jarvis.core.subagents.get_subagent_dir", return_value=tmp_path / "skills" / "friday"):
-        with patch("jarvis.core.subagents.load_skills_from_dir", return_value=[]):
-            with patch("jarvis.core.subagents.StarkNIMChatClient") as mock_client_cls:
-                agent = load_subagent("friday")
-                assert agent.name == "FRIDAY"
-                assert agent.default_options["instructions"] == "You are F.R.I.D.A.Y."
-                mock_client_cls.return_value.primary_model = "house_party"
+        with patch("jarvis.core.soul.get_subagent_dir", return_value=tmp_path / "skills" / "friday"):
+            with patch("jarvis.core.subagents.load_skills_from_dir", return_value=[]):
+                with patch("jarvis.core.subagents.StarkNIMChatClient") as mock_client_cls:
+                    agent = load_subagent("friday")
+                    assert agent.name == "FRIDAY"
+                    assert "You are F.R.I.D.A.Y. test agent." in agent.default_options["instructions"]
+                    assert "agent_id:" not in agent.default_options["instructions"]
+                    assert "# TEAM CONTRACT" in agent.default_options["instructions"]
+                    mock_client_cls.return_value.primary_model = "house_party"

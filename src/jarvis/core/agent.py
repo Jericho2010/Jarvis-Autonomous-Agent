@@ -82,6 +82,13 @@ class ToolTelemetryMiddleware(FunctionMiddleware):
                     "name": func_name,
                     "output": res_disp
                 })
+                if isinstance(res_disp, str) and (
+                    "/v1/captures/" in res_disp or "webvision/" in res_disp
+                ):
+                    await broadcast_event(session_id, "capture_ready", {
+                        "path": res_disp,
+                        "url": res_disp,
+                    })
                 
             if len(res_disp) > 1000:
                 res_disp = res_disp[:1000] + "\n... (truncated for readability)"

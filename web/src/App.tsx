@@ -16,7 +16,6 @@ import {
   getSessionDetail,
   switchSessionAgent,
   approveToolAction,
-  getApiUrl
 } from './lib/api';
 import { ReactorHUD } from './components/ReactorHUD';
 import { SubagentsRoster } from './components/SubagentsRoster';
@@ -25,9 +24,18 @@ import { ConsoleHUD } from './components/ConsoleHUD';
 import { RetinalHUD } from './components/RetinalHUD';
 import { FlowHUD } from './components/FlowHUD';
 import { useVoiceMode } from './hooks/useVoiceMode';
+import { extractCapturePath, resolveCaptureUrl } from './lib/captures';
+import { GraphEvent, MAX_GRAPH_EVENTS, MAX_LOG_LINES } from './lib/graphEvents';
+
+const TAB_LABELS: Record<'chat' | 'network' | 'retinal' | 'terminal', string> = {
+  chat: 'CHAT',
+  network: 'GRAPH',
+  retinal: 'RETINAL',
+  terminal: 'LOG',
+};
 
 import { 
-  Bot, 
+  Bot,
   MessageSquare, 
   Layers, 
   Terminal, 
@@ -58,6 +66,8 @@ export default function App() {
   const [activeToolArgs, setActiveToolArgs] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+  const [graphEvents, setGraphEvents] = useState<GraphEvent[]>([]);
+  const [inspectAgent, setInspectAgent] = useState<string | null>(null);
   const [pendingApproval, setPendingApproval] = useState<{
     request_id: string;
     function_name?: string;
@@ -67,7 +77,25 @@ export default function App() {
   const eventSourceRef = useRef<EventSource | null>(null);
   const voice = useVoiceMode();
   const playSpeechRef = useRef(voice.playSpeech);
+  const currentAgentRef = useRef(currentAgent);
   playSpeechRef.current = voice.playSpeech;
+  currentAgentRef.current = currentAgent;
+
+  const pushGraphEvent = (event: Omit<GraphEvent, 'ts'>) => {
+    setGraphEvents((prev) => [{ ...event, ts: Date.now() }, ...prev].slice(0, MAX_GRAPH_EVENTS));
+  };
+
+  const appendLog = (line: string) => {
+    setLogs((prev) => [...prev, line].slice(-MAX_LOG_LINES));
+  };
+
+  const applyCaptureFromText = async (text: string) => {
+    const capturePath = extractCapturePath(text);
+    if (!capturePath) return;
+    const fullUrl = await resolveCaptureUrl(capturePath, getApiUrl);
+    setScreenshotUrl(fullUrl);
+    setActiveTab('retinal');
+  };
 
   // Subagents Status Matrix
   const [subagents, setSubagents] = useState<SubagentStatus[]>([
@@ -135,6 +163,8 @@ export default function App() {
     setActiveToolArgs(null);
     setScreenshotUrl(null);
     setPendingApproval(null);
+    setGraphEvents([]);
+    setInspectAgent(null);
 
     // Fetch actual history and details
     getSessionHistory(currentSessionId).then(history => {
@@ -165,87 +195,46 @@ export default function App() {
         accumulatedText += chunk;
         setStreamingText(accumulatedText);
         
-        // Write raw to TTY logs
-        setLogs(prev => [...prev, `\x1b[36m${chunk.replace('\n', '\r\n')}\x1b[0m`]);
-        
-        // If friday or homer is writing, set their status to working
+        appendLog(`\x1b[36m${chunk.replace('\n', '\r\n')}\x1b[0m`);
+        void applyCaptureFromText(accumulatedText);
         updateSubagentActivity(accumulatedText);
         
       } else if (type === 'reasoning_chunk') {
         const chunk = data.text || '';
         accumulatedReasoning += chunk;
         setStreamingReasoning(accumulatedReasoning);
-        
-        setLogs(prev => [...prev, `\x1b[33m[Think]: ${chunk.replace('\n', '\r\n')}\x1b[0m`]);
+        appendLog(`\x1b[33m[Think]: ${chunk.replace('\n', '\r\n')}\x1b[0m`);
         
       } else if (type === 'tool_call_start') {
         const name = data.name || 'tool';
         const args = data.arguments || {};
         setActiveTool(name);
         setActiveToolArgs(args);
-        
-        setLogs(prev => [
-          ...prev, 
-          `\x1b[1;31m⚙ TOOL START: ${name.toUpperCase()}\x1b[0m`,
-          `\x1b[37m  Args: ${JSON.stringify(args)}\x1b[0m`
-        ]);
-        
-        // Update specific subagent activity based on tool call
-        if (name.toLowerCase() === 'sys_session_send') {
-          const targetAgent = args.subagent || '';
-          setSubagents(prev => prev.map(sa => 
-            sa.name.toLowerCase() === targetAgent.toLowerCase() 
-              ? { ...sa, activity: 'working', lastMessage: 'Delegated: ' + (args.prompt || '').slice(0, 40) + '...' }
-              : sa
-          ));
-        }
+        pushGraphEvent({
+          kind: 'tool_start',
+          agent: currentAgentRef.current,
+          tool: name,
+        });
+        appendLog(`\x1b[1;31m⚙ TOOL START: ${name.toUpperCase()}\x1b[0m`);
+        appendLog(`\x1b[37m  Args: ${JSON.stringify(args)}\x1b[0m`);
         
       } else if (type === 'tool_call_complete') {
         const name = data.name || 'tool';
         const output = data.output || data.error || '';
         setActiveTool(null);
         setActiveToolArgs(null);
+        pushGraphEvent({
+          kind: 'tool_done',
+          agent: currentAgentRef.current,
+          tool: name,
+        });
+        appendLog(`\x1b[1;32m✔ TOOL COMPLETE: ${name.toUpperCase()}\x1b[0m`);
+        appendLog(`\x1b[37m  Output: ${typeof output === 'string' ? output.slice(0, 150) : 'Object output'}...\x1b[0m`);
         
-        setLogs(prev => [
-          ...prev, 
-          `\x1b[1;32m✔ TOOL COMPLETE: ${name.toUpperCase()}\x1b[0m`,
-          `\x1b[37m  Output: ${typeof output === 'string' ? output.slice(0, 150) : 'Object output'}...\x1b[0m`
-        ]);
-        
-        // Check if output contains screenshot path or capture URL (Homer / Friday)
         if (output && typeof output === 'string') {
-          void (async () => {
-            let capturePath: string | null = null;
-            try {
-              const parsed = JSON.parse(output);
-              if (parsed?.url && typeof parsed.url === 'string') {
-                capturePath = parsed.url;
-              } else if (parsed?.path && typeof parsed.path === 'string') {
-                capturePath = parsed.path.startsWith('/')
-                  ? parsed.path
-                  : `/v1/captures/${parsed.path.replace(/^webvision\//, '')}`;
-              }
-            } catch {
-              const urlMatch = output.match(/(\/v1\/captures\/[^\s"']+\.(?:png|jpg|jpeg))/i);
-              if (urlMatch?.[1]) {
-                capturePath = urlMatch[1];
-              }
-            }
-            if (capturePath) {
-              const baseUrl = await getApiUrl();
-              const fullUrl = capturePath.startsWith('http')
-                ? capturePath
-                : `${baseUrl}${capturePath.startsWith('/') ? capturePath : `/${capturePath}`}`;
-              setScreenshotUrl(fullUrl);
-              setActiveTab('retinal');
-            }
-          })();
+          void applyCaptureFromText(output);
         }
         
-        // Reset subagent activity on complete
-        if (name.toLowerCase() === 'sys_session_send') {
-          setSubagents(prev => prev.map(sa => ({ ...sa, activity: 'done' })));
-        }
       } else if (type === 'user_message') {
         const text = data.text || '';
         setMessages(prev => [...prev, {
@@ -253,25 +242,38 @@ export default function App() {
           content: text,
           timestamp: data.timestamp ? data.timestamp * 1000 : Date.now()
         }]);
-        setLogs(prev => [...prev, `\x1b[1;33m❯ USER: ${text}\x1b[0m`]);
+        appendLog(`\x1b[1;33m❯ USER: ${text}\x1b[0m`);
 
       } else if (type === 'agent_changed') {
         const agentId = data.agent_id || 'jarvis';
         setCurrentAgent(agentId);
-        setLogs(prev => [...prev, `\x1b[36m⬡ ACTIVE AGENT SWITCHED TO: ${agentId.toUpperCase()}\x1b[0m`]);
+        pushGraphEvent({ kind: 'agent', agent: agentId });
+        appendLog(`\x1b[36m⬡ ACTIVE AGENT: ${agentId.toUpperCase()}\x1b[0m`);
 
       } else if (type === 'title_changed') {
         const title = data.title || '';
         listSessions().then(setSessions);
-        setLogs(prev => [...prev, `\x1b[36m⬡ SESSION TITLE SET TO: ${title}\x1b[0m`]);
+        appendLog(`\x1b[36m⬡ SESSION TITLE SET TO: ${title}\x1b[0m`);
 
       } else if (type === 'handoff') {
         const agent = (data.agent || '').toLowerCase();
+        const source = (data.source || 'jarvis').toLowerCase();
         if (agent && ['friday', 'homer', 'plato'].includes(agent)) {
           setSubagents(prev => prev.map(sa =>
             sa.name === agent ? { ...sa, activity: 'working' } : sa
           ));
           setCurrentAgent(agent);
+          pushGraphEvent({
+            kind: 'handoff',
+            agent,
+            detail: `${source.toUpperCase()} → ${agent.toUpperCase()}`,
+          });
+        }
+
+      } else if (type === 'capture_ready') {
+        const url = data.url || data.path;
+        if (typeof url === 'string') {
+          void applyCaptureFromText(url);
         }
 
       } else if (type === 'approval_required') {
@@ -280,7 +282,7 @@ export default function App() {
           function_name: data.function_name,
           arguments: data.arguments,
         });
-        setLogs(prev => [...prev, '\x1b[1;33m⚠ DESKTOP ACTION REQUIRES WEB HUD APPROVAL\x1b[0m']);
+        appendLog('\x1b[1;33m⚠ DESKTOP ACTION REQUIRES WEB HUD APPROVAL\x1b[0m');
 
       } else if (type === 'approval_resolved') {
         setPendingApproval(null);
@@ -317,7 +319,7 @@ export default function App() {
         // Reset subagents activity
         setSubagents(prev => prev.map(sa => ({ ...sa, activity: 'idle', lastMessage: undefined })));
         
-        setLogs(prev => [...prev, '\x1b[1;36m✔ TURN COMPLETED // J.A.R.V.I.S. READY\x1b[0m\r\n']);
+        appendLog('\x1b[1;36m✔ TURN COMPLETED // J.A.R.V.I.S. READY\x1b[0m\r\n');
         
         // Refresh sessions list
         listSessions().then(setSessions);
@@ -350,9 +352,9 @@ export default function App() {
     const ok = await switchSessionAgent(currentSessionId, agentId);
     if (ok) {
       setCurrentAgent(agentId);
-      setLogs(prev => [...prev, `\x1b[36m⬡ ACTIVE AGENT SET TO: ${agentId.toUpperCase()}\x1b[0m`]);
+      appendLog(`\x1b[36m⬡ ACTIVE AGENT SET TO: ${agentId.toUpperCase()}\x1b[0m`);
     } else {
-      setLogs(prev => [...prev, `\x1b[1;31m❌ Failed to switch active agent!\x1b[0m`]);
+      appendLog('\x1b[1;31m❌ Failed to switch active agent!\x1b[0m');
     }
   };
 
@@ -368,7 +370,7 @@ export default function App() {
       timestamp
     }]);
     
-    setLogs(prev => [...prev, `\x1b[1;33m❯ USER: ${text}${files && files.length > 0 ? ' (with ' + files.length + ' attachments)' : ''}\x1b[0m`]);
+    appendLog(`\x1b[1;33m❯ USER: ${text}${files && files.length > 0 ? ' (with ' + files.length + ' attachments)' : ''}\x1b[0m`);
 
     // Command Interceptor
     const cmd = text.trim();
@@ -581,7 +583,7 @@ export default function App() {
 
     const ok = await sendChatMessage(currentSessionId, text, files);
     if (!ok) {
-      setLogs(prev => [...prev, '\x1b[1;31m❌ Error sending prompt to API server!\x1b[0m']);
+      appendLog('\x1b[1;31m❌ Error sending prompt to API server!\x1b[0m');
     }
   };
 
@@ -600,16 +602,15 @@ export default function App() {
     if (!currentSessionId || !pendingApproval) return;
     const ok = await approveToolAction(currentSessionId, pendingApproval.request_id, approved);
     if (!ok) {
-      setLogs(prev => [...prev, '\x1b[1;31m❌ Failed to submit approval response\x1b[0m']);
+      appendLog('\x1b[1;31m❌ Failed to submit approval response\x1b[0m');
       return;
     }
     setPendingApproval(null);
-    setLogs(prev => [
-      ...prev,
+    appendLog(
       approved
         ? '\x1b[1;32m✔ DESKTOP ACTION APPROVED\x1b[0m'
         : '\x1b[1;31m✖ DESKTOP ACTION REJECTED\x1b[0m',
-    ]);
+    );
   };
 
   const handleClearSession = () => {
@@ -703,7 +704,7 @@ export default function App() {
           <div className="flex items-center gap-4 font-mono text-xs">
             <div className="flex items-center gap-1">
               <span className="text-white/40">HUD MODE //</span>
-              <span className="text-stark-cyan font-bold tracking-wider uppercase">{activeTab}</span>
+              <span className="text-stark-cyan font-bold tracking-wider uppercase">{TAB_LABELS[activeTab]}</span>
             </div>
             <div className="h-3 w-[1px] bg-white/10" />
             <div className="flex items-center gap-1">
@@ -728,7 +729,7 @@ export default function App() {
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              CONSOLE
+              CHAT
             </button>
             <button
               onClick={() => setActiveTab('network')}
@@ -739,7 +740,7 @@ export default function App() {
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
-              MATRIX
+              GRAPH
             </button>
             <button
               onClick={() => setActiveTab('retinal')}
@@ -764,13 +765,19 @@ export default function App() {
               }`}
             >
               <Terminal className="w-3.5 h-3.5" />
-              TTY
+              LOG
             </button>
           </div>
         </div>
 
         {/* HUD Viewport display */}
-        <div className="flex-1 min-h-0 flex">
+        <div className="flex-1 min-h-0 flex flex-col">
+          {currentAgent !== 'jarvis' && activeTab === 'chat' && (
+            <div className="shrink-0 px-4 py-2 bg-stark-gold/10 border-b border-stark-gold/20 text-[11px] font-mono text-stark-gold">
+              Direct mode — talking to {currentAgent.toUpperCase()} only. Select Jarvis in Agent Roster to restore handoff.
+            </div>
+          )}
+          <div className="flex-1 min-h-0 flex">
           {activeTab === 'chat' && (
             <ChatStream
               sessionId={currentSessionId}
@@ -801,9 +808,18 @@ export default function App() {
               }}
             />
           )}
-          {activeTab === 'network' && <FlowHUD subagents={subagents} />}
+          {activeTab === 'network' && (
+            <FlowHUD
+              subagents={subagents}
+              currentAgentId={currentAgent}
+              activeTool={activeTool}
+              graphEvents={graphEvents}
+              onAgentClick={(agentId) => setInspectAgent(agentId)}
+            />
+          )}
           {activeTab === 'retinal' && <RetinalHUD screenshotUrl={screenshotUrl} />}
           {activeTab === 'terminal' && <ConsoleHUD logs={logs} />}
+          </div>
         </div>
       </div>
 
@@ -811,7 +827,9 @@ export default function App() {
       <SubagentsRoster 
         subagents={subagents} 
         currentAgentId={currentAgent} 
-        onSwitchAgent={handleSwitchAgent} 
+        onSwitchAgent={handleSwitchAgent}
+        inspectAgent={inspectAgent}
+        onInspectAgentClose={() => setInspectAgent(null)}
       />
       
     </div>

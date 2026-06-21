@@ -39,21 +39,12 @@ async def test_chat_and_stream():
             create_res = await client.post("/v1/sessions")
             session_id = create_res.json()["session_id"]
             
-        # Mock StarkNIMChatClient response
-        mock_response = MagicMock()
-        mock_response.text = "Hello, Sir."
-        
-        async def mock_agent_stream(*args, **kwargs):
-            class Chunk:
-                def __init__(self, text):
-                    self.text = text
-                    self.contents = []
-            yield Chunk("Hello, Sir.")
-            
-        mock_agent = MagicMock()
-        mock_agent.run = mock_agent_stream
-        
-        with patch("jarvis.server.app.create_jarvis_agent", return_value=mock_agent):
+        async def mock_handoff_turn(session_id, user_message, **kwargs):
+            from jarvis.core.subagents import broadcast_event
+            await broadcast_event(session_id, "text_chunk", {"text": "Hello, Sir."})
+            return "Hello, Sir."
+
+        with patch("jarvis.server.app.run_handoff_turn", side_effect=mock_handoff_turn):
             # 2. Get the stream response object directly from the route function
             from jarvis.server.app import stream_session
             from starlette.requests import Request
@@ -221,6 +212,9 @@ async def test_subagents_detail_endpoint():
         assert "model" in data
         assert "instructions" in data
         assert "tools" in data
+        assert "meta" in data
+        assert "agent_id:" not in data["instructions"]
+        assert data["meta"]["output_contract"] == "friday_action_v1"
         
         res_missing = await client.get("/v1/subagents/invalid-agent")
         assert res_missing.status_code == 404

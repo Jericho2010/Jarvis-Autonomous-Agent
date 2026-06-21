@@ -10,6 +10,10 @@ def test_compile_jarvis_instructions_includes_delegation():
     assert "DIGITAL HANDS DELEGATION" in text
     assert "Homer" in text
     assert "Friday" in text
+    assert "Plato" in text
+    assert "forge_skill" in text
+    assert "AFTER SPECIALIST RETURNS" in text
+    assert "Recommendations for Jarvis" in text
 
 
 def test_playwright_mcp_manager_node_version_ok():
@@ -55,6 +59,7 @@ async def test_build_handoff_workflow_structure():
                 session_model="house-party",
                 homer_model="house-party",
                 friday_model="house-party",
+                plato_model="house-party",
                 mcp_tool=None,
             )
     assert isinstance(workflow, Workflow)
