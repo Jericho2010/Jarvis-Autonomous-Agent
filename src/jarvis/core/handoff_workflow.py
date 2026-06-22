@@ -54,6 +54,12 @@ Route to **Homer** for follow-up summarisation when:
 
 Homer handoff for video summary MUST include: video title, platform/browser, URL if known, and genre or depth if the user specified it.
 
+When the user asks to summarise a video after Friday recon in the same session:
+- If Friday reported active_window is NOT media but listed a media candidate (e.g. YouTube in Firefox), hand off to Homer for THAT candidate only.
+- Homer handoff MUST include: exact title, browser, note that it is a background tab (not the active window), user genre hint (e.g. comedy), and any URL if known.
+- Do NOT substitute a different tab than Friday's media candidate.
+- If user genre conflicts with the title (e.g. comedy vs rugby announcement), Homer should note the mismatch in the summary.
+
 Route to **Plato** when:
 - `forge_skill` fails or a skill in `skills/` / `skills_staging/` needs audit
 - `execute_bash` or `read_file_content` / `write_file_content` fails and root-cause is unclear

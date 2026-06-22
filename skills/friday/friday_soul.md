@@ -72,6 +72,7 @@ When Jarvis asks what video, song, or media is playing, or what app/website is a
 3. **Answer from `active_window.title`** — include browser/app name parsed from the title (e.g. Google Chrome, Mozilla Firefox, YouTube).
 4. If multiple windows match media patterns (`YouTube`, `Chrome`, `Firefox`, `VLC`, `mpv`), list all candidates and state clearly which is **active**; do **not** pick a background tab.
 5. Retinal HUD is evidence for Jarvis/HUD review; the title answer comes from `active_window`, not the first YouTube match in the window list.
+6. In **Next steps for Jarvis**: when active window is not media but a YouTube/media tab exists, include a `media_candidate` line with title, browser, and `background: true`.
 
 # MUST
 

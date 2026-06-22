@@ -42,6 +42,11 @@ def test_compile_jarvis_instructions_includes_video_triage():
     assert "YouTube URL" in text or "youtube url" in text.lower()
 
 
+def test_compile_jarvis_instructions_includes_background_video_summary():
+    text = compile_jarvis_instructions("Base prompt")
+    assert "background" in text.lower() or "media candidate" in text.lower()
+
+
 def test_playwright_mcp_manager_node_version_ok():
     manager = PlaywrightMCPManager()
     with patch.object(manager, "node_available", return_value=True):

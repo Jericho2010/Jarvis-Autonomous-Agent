@@ -133,12 +133,50 @@ def title_tokens(title: str) -> set[str]:
     return {w for w in words if w not in stop}
 
 
+def is_media_title(title: str) -> bool:
+    return bool(MEDIA_TITLE_RE.search(title))
+
+
 def response_matches_ground_truth(response: str, gt: GroundTruth) -> tuple[bool, list[str]]:
     reasons: list[str] = []
     if not response.strip():
         return False, ["no Jarvis reply"]
 
     text = response.lower()
+    active = gt.active_title
+
+    if not is_media_title(active):
+        active_tokens = title_tokens(active)
+        matched_active = [tok for tok in active_tokens if tok in text]
+        if len(matched_active) >= max(1, len(active_tokens) // 2):
+            reasons.append(f"active window tokens matched: {matched_active[:6]}")
+        else:
+            reasons.append(f"active window missing (expected ~{active!r})")
+            return False, reasons
+        not_watching = any(
+            phrase in text
+            for phrase in (
+                "not a video",
+                "not currently watching",
+                "not watching",
+                "is not a video",
+                "no video",
+                "not the active",
+                "background",
+            )
+        )
+        if gt.youtube_windows and not not_watching:
+            reasons.append("did not clarify active window is not media/background")
+            return False, reasons
+        if not_watching:
+            reasons.append("clarified not watching / background context")
+        if gt.browser and gt.browser.lower() in text:
+            reasons.append(f"browser matched: {gt.browser}")
+        elif gt.browser:
+            reasons.append(f"browser missing (expected {gt.browser})")
+            return False, reasons
+        return True, reasons
+
     expected_title = gt.video_title().lower()
     if expected_title:
         tokens = title_tokens(gt.video_title())
@@ -157,6 +195,17 @@ def response_matches_ground_truth(response: str, gt: GroundTruth) -> tuple[bool,
             return False, reasons
 
     return True, reasons
+
+
+def media_candidate_from_turn(r1: TurnResult) -> str:
+    """Best-effort media tab title from turn-1 ground truth or response."""
+    if r1.ground_truth and r1.ground_truth.youtube_windows:
+        active = r1.ground_truth.active_title
+        for title in r1.ground_truth.youtube_windows:
+            if title != active:
+                return title
+        return r1.ground_truth.youtube_windows[0]
+    return ""
 
 
 def score_video_identification(r: TurnResult) -> tuple[str, list[str]]:
@@ -197,7 +246,21 @@ def post_chat(session_id: str, message: str) -> None:
     )
 
 
+def fetch_last_assistant_message(session_id: str) -> str:
+    """Return the latest assistant message from session history (authoritative for scoring)."""
+    try:
+        out = _http_json("GET", f"{BASE}/v1/sessions/{session_id}/history", timeout=15)
+        msgs = out if isinstance(out, list) else out.get("messages", [])
+        for m in reversed(msgs):
+            if isinstance(m, dict) and m.get("role") == "assistant":
+                return str(m.get("content") or "").strip()
+    except Exception as exc:
+        log(f"  [warn] history fetch failed: {exc}")
+    return ""
+
+
 def fetch_history(session_id: str) -> str:
+    """All assistant messages joined (legacy helper)."""
     try:
         out = _http_json("GET", f"{BASE}/v1/sessions/{session_id}/history", timeout=15)
         msgs = out if isinstance(out, list) else out.get("messages", [])
@@ -319,14 +382,17 @@ def run_turn(
     stop.set()
     thread.join(timeout=3.0)
     result.events = events
-    chunks = [
-        str((e.get("data") or {}).get("text", ""))
-        for e in events
-        if e.get("type") == "text_chunk"
-    ]
-    result.response_text = "".join(chunks).strip()
-    if not result.response_text:
-        result.response_text = fetch_history(sid)
+    # Scoring must use the authoritative history reply, not partial SSE chunks.
+    history_reply = fetch_last_assistant_message(sid)
+    if history_reply:
+        result.response_text = history_reply
+    else:
+        chunks = [
+            str((e.get("data") or {}).get("text", ""))
+            for e in events
+            if e.get("type") == "text_chunk"
+        ]
+        result.response_text = "".join(chunks).strip()
     if not any(e.get("type") == "turn_complete" for e in events):
         if completed:
             result.error = "turn_complete SSE missed (log/history fallback used)"
@@ -425,34 +491,68 @@ def score_plato(r: TurnResult) -> tuple[str, list[str]]:
     return "FAIL", reasons
 
 
+def score_turn2_summary(r1: TurnResult, r2: TurnResult) -> tuple[str, list[str]]:
+    reasons: list[str] = []
+    if r2.error == "timeout before turn completed" or not r2.response_text.strip():
+        return "NO_REPLY", ["turn did not complete or empty reply"]
+
+    text = r2.response_text.lower()
+    log2 = grep_log_tools(r2.session_id)
+    has_homer = any(t == "homer" for t in r2.handoff_targets()) or "web_search" in log2
+    has_web = "web_search" in log2 or "web_extract" in log2
+    bad = any(k in text for k in ("jsonlz4", "lz4", "sessionstore", "pip install"))
+
+    if bad:
+        reasons.append("bash detour")
+        return "FAIL", reasons
+    if not has_homer and not has_web:
+        reasons.append("no homer/web tools")
+        return "FAIL", reasons
+
+    candidate = media_candidate_from_turn(r1)
+    if candidate:
+        tokens = title_tokens(candidate)
+        matched = [tok for tok in tokens if tok in text]
+        if len(matched) >= max(2, len(tokens) // 2):
+            reasons.append(f"media candidate tokens matched: {matched[:6]}")
+        else:
+            reasons.append(f"media candidate missing (~{candidate[:60]!r})")
+            return "FAIL", reasons
+
+    background_note = any(
+        phrase in text
+        for phrase in ("background", "not the active", "not currently watching", "not watching", "open in")
+    )
+    if candidate and not background_note:
+        reasons.append("missing background/not-active note")
+        return "PARTIAL", reasons
+    if background_note:
+        reasons.append("notes background/not-active context")
+
+    if has_web:
+        reasons.append("homer web tools ran")
+        return "PASS", reasons
+    return "PARTIAL", reasons
+
+
 def score_youtube(r1: TurnResult, r2: TurnResult) -> tuple[str, list[str]]:
     reasons: list[str] = []
     t1_verdict, t1_reasons = score_video_identification(r1)
     reasons.extend([f"t1: {r}" for r in t1_reasons])
 
-    log2 = grep_log_tools(r2.session_id)
-    has_homer = any(t == "homer" for t in r2.handoff_targets()) or "web_search" in log2
-    has_web = "web_search" in log2 or "web_extract" in log2
-    bad = any(k in r2.response_text.lower() for k in ("jsonlz4", "lz4", "sessionstore", "pip install"))
-
     if t1_verdict == "NO_REPLY":
         reasons.append("t2: skipped (turn 1 no reply)")
         return "NO_REPLY", reasons
 
-    if r2.error == "timeout before turn completed" or not r2.response_text.strip():
-        reasons.append("t2: no reply")
-        return ("PARTIAL" if t1_verdict == "PASS" else "FAIL"), reasons
+    t2_verdict, t2_reasons = score_turn2_summary(r1, r2)
+    reasons.extend([f"t2: {r}" for r in t2_reasons])
 
-    reasons.append("t2: homer/web tools ran" if has_web else "t2: no web tools")
-    if bad:
-        reasons.append("t2: bash detour")
-
-    if t1_verdict == "PASS" and has_web and not bad:
+    if t1_verdict == "PASS" and t2_verdict == "PASS":
         return "PASS", reasons
-    if t1_verdict == "PASS" and has_homer:
+    if t1_verdict == "PASS" and t2_verdict in ("PARTIAL", "NO_REPLY"):
         return "PARTIAL", reasons
     if t1_verdict == "PASS":
-        return "PARTIAL", reasons
+        return t2_verdict, reasons
     return "FAIL", reasons
 
 
@@ -561,8 +661,9 @@ def main() -> int:
         )
         v, reasons = score_youtube(r1, r2)
         t1_verdict, _ = score_video_identification(r1)
+        t2_verdict, _ = score_turn2_summary(r1, r2)
         print_result(r1, t1_verdict + " (t1)", [r for r in reasons if r.startswith("t1:")])
-        print_result(r2, v + " (t2)", [r for r in reasons if r.startswith("t2:")])
+        print_result(r2, t2_verdict + " (t2)", [r for r in reasons if r.startswith("t2:")])
         results["youtube"] = v
 
     log(f"\n{'='*60}\nSUMMARY")
