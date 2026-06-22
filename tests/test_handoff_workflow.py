@@ -35,6 +35,13 @@ def test_compile_jarvis_instructions_includes_delegation():
     assert "Recommendations for Jarvis" in text
 
 
+def test_compile_jarvis_instructions_includes_video_triage():
+    text = compile_jarvis_instructions("Base prompt")
+    assert "what video" in text.lower() or "on screen" in text.lower()
+    assert "summarise" in text.lower() or "summarize" in text.lower()
+    assert "YouTube URL" in text or "youtube url" in text.lower()
+
+
 def test_playwright_mcp_manager_node_version_ok():
     manager = PlaywrightMCPManager()
     with patch.object(manager, "node_available", return_value=True):

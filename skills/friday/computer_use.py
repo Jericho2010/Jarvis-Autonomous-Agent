@@ -192,12 +192,78 @@ def stark_os_kinetic_key(key: str) -> str:
     except Exception as e:
         return json.dumps({"success": False, "error": str(e)})
 
+def _normalize_window_id(window_id: str) -> str:
+    """Normalize wmctrl/xdotool window ids for comparison."""
+    wid = window_id.strip().lower()
+    if wid.startswith("0x"):
+        return hex(int(wid, 16))
+    return hex(int(wid))
+
+
+def _parse_wmctrl_windows(stdout: str) -> list[dict[str, str]]:
+    windows: list[dict[str, str]] = []
+    for line in stdout.splitlines():
+        parts = line.split(maxsplit=3)
+        if len(parts) >= 4:
+            windows.append({
+                "id": parts[0],
+                "desktop": parts[1],
+                "host": parts[2],
+                "title": parts[3],
+            })
+    return windows
+
+
+def _query_active_window(windows: list[dict[str, str]]) -> Optional[dict[str, str]]:
+    """Return the focused window, matched against wmctrl when possible."""
+    try:
+        id_res = subprocess.run(
+            ["xdotool", "getactivewindow"],
+            capture_output=True,
+            text=True,
+        )
+        title_res = subprocess.run(
+            ["xdotool", "getactivewindow", "getwindowname"],
+            capture_output=True,
+            text=True,
+        )
+        if title_res.returncode != 0:
+            return None
+
+        title = title_res.stdout.strip()
+        if not title:
+            return None
+
+        active_id = None
+        if id_res.returncode == 0 and id_res.stdout.strip().isdigit():
+            active_id = _normalize_window_id(id_res.stdout.strip())
+
+        if active_id:
+            for window in windows:
+                if _normalize_window_id(window["id"]) == active_id:
+                    return window
+
+        for window in windows:
+            if window["title"] == title:
+                return window
+
+        return {
+            "id": hex(int(id_res.stdout.strip())) if id_res.returncode == 0 and id_res.stdout.strip().isdigit() else "",
+            "desktop": "",
+            "host": "",
+            "title": title,
+        }
+    except Exception:
+        return None
+
+
 @tool(approval_mode="never_require")
 def stark_os_armor_list_windows() -> str:
     """
     Stark OS-Uplink: Query active system windows and return their metadata in a JSON array.
+    Includes the currently focused window in `active_window` when detectable via xdotool.
     Returns:
-        JSON array string representing window titles and workspace IDs.
+        JSON object with `active_window` and `windows` arrays.
     """
     try:
         res = subprocess.run(
@@ -207,18 +273,13 @@ def stark_os_armor_list_windows() -> str:
         )
         if res.returncode != 0:
             return json.dumps({"success": False, "error": res.stderr or "wmctrl -l failed"})
-            
-        windows = []
-        for line in res.stdout.splitlines():
-            parts = line.split(maxsplit=3)
-            if len(parts) >= 4:
-                windows.append({
-                    "id": parts[0],
-                    "desktop": parts[1],
-                    "host": parts[2],
-                    "title": parts[3]
-                })
-        return json.dumps({"success": True, "windows": windows})
+
+        windows = _parse_wmctrl_windows(res.stdout)
+        active_window = _query_active_window(windows)
+        payload: dict[str, object] = {"success": True, "windows": windows}
+        if active_window is not None:
+            payload["active_window"] = active_window
+        return json.dumps(payload)
     except Exception as e:
         return json.dumps({"success": False, "error": str(e)})
 

@@ -114,20 +114,33 @@ def test_stark_os_kinetic_key_success():
         )
 
 def test_stark_os_armor_list_windows_success():
-    mock_run = MagicMock()
-    mock_run.returncode = 0
-    mock_run.stdout = (
+    wmctrl_out = (
         "0x03c00003  0 zbook Firefox Web Browser\n"
         "0x04600006  0 zbook Terminal\n"
     )
-    
-    with patch("skills.friday.computer_use.subprocess.run", return_value=mock_run) as mock_sub:
+
+    def fake_run(cmd, **kwargs):
+        mock = MagicMock()
+        mock.returncode = 0
+        if cmd[:2] == ["wmctrl", "-l"]:
+            mock.stdout = wmctrl_out
+        elif cmd == ["xdotool", "getactivewindow"]:
+            mock.stdout = "62914563\n"
+        elif cmd == ["xdotool", "getactivewindow", "getwindowname"]:
+            mock.stdout = "Firefox Web Browser"
+        else:
+            mock.stdout = ""
+        return mock
+
+    with patch("skills.friday.computer_use.subprocess.run", side_effect=fake_run):
         result_str = stark_os_armor_list_windows()
         result = json.loads(result_str)
         assert result["success"] is True
         assert len(result["windows"]) == 2
         assert result["windows"][0]["id"] == "0x03c00003"
         assert result["windows"][0]["title"] == "Firefox Web Browser"
+        assert result["active_window"]["title"] == "Firefox Web Browser"
+        assert result["active_window"]["id"] == "0x03c00003"
 
 def test_stark_os_armor_focus_window_success():
     mock_run = MagicMock()

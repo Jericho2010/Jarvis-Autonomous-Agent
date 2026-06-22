@@ -63,6 +63,16 @@ Full perceive-act-verify for clicks, typing, scrolling, window focus:
 5. Post-action retinal HUD is mandatory.
 6. If awaiting approval: report "awaiting HUD approval for step N" — do not assume approval.
 
+## C. Media reconnaissance (what video / what app)
+
+When Jarvis asks what video, song, or media is playing, or what app/website is active:
+
+1. `stark_os_armor_list_windows` — read `active_window` first.
+2. `stark_os_retinal_hud` for evidence URL in the report.
+3. **Answer from `active_window.title`** — include browser/app name parsed from the title (e.g. Google Chrome, Mozilla Firefox, YouTube).
+4. If multiple windows match media patterns (`YouTube`, `Chrome`, `Firefox`, `VLC`, `mpv`), list all candidates and state clearly which is **active**; do **not** pick a background tab.
+5. Retinal HUD is evidence for Jarvis/HUD review; the title answer comes from `active_window`, not the first YouTube match in the window list.
+
 # MUST
 
 - Check desktop guard before kinetic actions; report immediately if X11/Wayland unavailable.

@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -19,9 +20,27 @@ from urllib.request import Request, urlopen
 
 BASE = "http://127.0.0.1:8008"
 LOG_PATH = Path(__file__).resolve().parents[1] / "data" / "server.log"
+SCRATCH_DIR = Path(__file__).resolve().parent
 TURN_TIMEOUT = 180.0
 IDLE_TIMEOUT = 45.0
 READ_TIMEOUT = 5.0
+MEDIA_TITLE_RE = re.compile(r"youtube|chrome|firefox|mozilla|vlc|mpv", re.I)
+
+
+@dataclass
+class GroundTruth:
+    active_title: str = ""
+    browser: str = ""
+    youtube_windows: list[str] = field(default_factory=list)
+    screenshot_path: str = ""
+
+    def video_title(self) -> str:
+        title = self.active_title
+        for suffix in (" - YouTube - Google Chrome", " — Mozilla Firefox", " - YouTube — Mozilla Firefox"):
+            if title.endswith(suffix):
+                title = title[: -len(suffix)]
+        title = re.sub(r"^\(\d+\)\s*", "", title).strip()
+        return title
 
 
 @dataclass
@@ -32,6 +51,7 @@ class TurnResult:
     events: list[dict[str, Any]] = field(default_factory=list)
     response_text: str = ""
     error: str | None = None
+    ground_truth: GroundTruth | None = None
 
     def handoff_targets(self) -> list[str]:
         targets: list[str] = []
@@ -64,6 +84,90 @@ class TurnResult:
 
 def log(msg: str) -> None:
     print(msg, flush=True)
+
+
+def _run_cmd(cmd: list[str]) -> str:
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        if res.returncode != 0:
+            return ""
+        return res.stdout.strip()
+    except Exception:
+        return ""
+
+
+def infer_browser(title: str) -> str:
+    lower = title.lower()
+    if "google chrome" in lower or " - google chrome" in lower:
+        return "Chrome"
+    if "mozilla firefox" in lower or "firefox" in lower:
+        return "Firefox"
+    if "chromium" in lower:
+        return "Chromium"
+    return ""
+
+
+def capture_ground_truth(screenshot: bool = False) -> GroundTruth:
+    active_title = _run_cmd(["xdotool", "getactivewindow", "getwindowname"])
+    wmctrl_out = _run_cmd(["wmctrl", "-l"])
+    youtube_windows = [
+        line.split(None, 3)[3]
+        for line in wmctrl_out.splitlines()
+        if len(line.split(None, 3)) >= 4 and MEDIA_TITLE_RE.search(line)
+    ]
+    gt = GroundTruth(
+        active_title=active_title,
+        browser=infer_browser(active_title),
+        youtube_windows=youtube_windows,
+    )
+    if screenshot:
+        path = SCRATCH_DIR / f"ground_truth_{int(time.time())}.png"
+        if subprocess.run(["scrot", "-o", str(path)], check=False).returncode == 0:
+            gt.screenshot_path = str(path)
+    return gt
+
+
+def title_tokens(title: str) -> set[str]:
+    words = re.findall(r"[a-z0-9]{3,}", title.lower())
+    stop = {"youtube", "google", "chrome", "mozilla", "firefox", "the", "and", "for"}
+    return {w for w in words if w not in stop}
+
+
+def response_matches_ground_truth(response: str, gt: GroundTruth) -> tuple[bool, list[str]]:
+    reasons: list[str] = []
+    if not response.strip():
+        return False, ["no Jarvis reply"]
+
+    text = response.lower()
+    expected_title = gt.video_title().lower()
+    if expected_title:
+        tokens = title_tokens(gt.video_title())
+        matched = [tok for tok in tokens if tok in text]
+        if len(matched) >= max(2, len(tokens) // 2):
+            reasons.append(f"title tokens matched: {matched[:6]}")
+        else:
+            reasons.append(f"title mismatch (expected ~{gt.video_title()!r})")
+            return False, reasons
+
+    if gt.browser:
+        if gt.browser.lower() in text:
+            reasons.append(f"browser matched: {gt.browser}")
+        else:
+            reasons.append(f"browser missing (expected {gt.browser})")
+            return False, reasons
+
+    return True, reasons
+
+
+def score_video_identification(r: TurnResult) -> tuple[str, list[str]]:
+    gt = r.ground_truth
+    if gt is None:
+        return "FAIL", ["no ground truth captured"]
+    if r.error == "timeout before turn completed" or not r.response_text.strip():
+        return "NO_REPLY", ["turn did not complete or empty reply"]
+
+    ok, reasons = response_matches_ground_truth(r.response_text, gt)
+    return ("PASS" if ok else "FAIL"), reasons
 
 
 def _http_json(method: str, url: str, body: dict | None = None, timeout: float = 30) -> dict:
@@ -166,9 +270,23 @@ def turn_completion_recorded(session_id: str, baseline_count: int) -> bool:
     return count_log_turn_completions(session_id) > baseline_count
 
 
-def run_turn(name: str, message: str, session_id: str | None = None) -> TurnResult:
+def run_turn(
+    name: str,
+    message: str,
+    session_id: str | None = None,
+    *,
+    capture_gt: bool = True,
+    screenshot_gt: bool = False,
+) -> TurnResult:
     sid = session_id or create_session()
     result = TurnResult(name=name, session_id=sid, messages=[message])
+    if capture_gt:
+        result.ground_truth = capture_ground_truth(screenshot=screenshot_gt)
+        log(f"   [ground] active={result.ground_truth.active_title!r}")
+        if result.ground_truth.browser:
+            log(f"   [ground] browser={result.ground_truth.browser}")
+        if result.ground_truth.youtube_windows:
+            log(f"   [ground] media windows={len(result.ground_truth.youtube_windows)}")
     log(f"\n>> {name}: session={sid}")
     log(f"   prompt: {message[:80]}...")
     completions_before = count_log_turn_completions(sid)
@@ -309,21 +427,43 @@ def score_plato(r: TurnResult) -> tuple[str, list[str]]:
 
 def score_youtube(r1: TurnResult, r2: TurnResult) -> tuple[str, list[str]]:
     reasons: list[str] = []
-    t1 = r1.response_text.lower()
-    turn1_ok = any(k in t1 for k in ("youtube", "firefox", "mozilla", "video", "watching"))
+    t1_verdict, t1_reasons = score_video_identification(r1)
+    reasons.extend([f"t1: {r}" for r in t1_reasons])
+
     log2 = grep_log_tools(r2.session_id)
     has_homer = any(t == "homer" for t in r2.handoff_targets()) or "web_search" in log2
     has_web = "web_search" in log2 or "web_extract" in log2
     bad = any(k in r2.response_text.lower() for k in ("jsonlz4", "lz4", "sessionstore", "pip install"))
-    reasons.append("turn1 ok" if turn1_ok else "turn1 weak")
-    reasons.append("turn2 homer/web" if has_web else "turn2 no web tools")
+
+    if t1_verdict == "NO_REPLY":
+        reasons.append("t2: skipped (turn 1 no reply)")
+        return "NO_REPLY", reasons
+
+    if r2.error == "timeout before turn completed" or not r2.response_text.strip():
+        reasons.append("t2: no reply")
+        return ("PARTIAL" if t1_verdict == "PASS" else "FAIL"), reasons
+
+    reasons.append("t2: homer/web tools ran" if has_web else "t2: no web tools")
     if bad:
-        reasons.append("turn2 bash detour")
-    if turn1_ok and has_web and not bad:
+        reasons.append("t2: bash detour")
+
+    if t1_verdict == "PASS" and has_web and not bad:
         return "PASS", reasons
-    if turn1_ok and has_homer:
+    if t1_verdict == "PASS" and has_homer:
+        return "PARTIAL", reasons
+    if t1_verdict == "PASS":
         return "PARTIAL", reasons
     return "FAIL", reasons
+
+
+def print_ground_truth_table(r: TurnResult, verdict: str) -> None:
+    gt = r.ground_truth
+    expected = gt.video_title() if gt else "(unknown)"
+    browser = gt.browser if gt else "(unknown)"
+    jarvis = r.response_text[:200].replace("\n", " ") if r.response_text else "(no reply)"
+    log(f"  Ground truth : {expected} | {browser}")
+    log(f"  Jarvis said    : {jarvis}")
+    log(f"  Verdict        : {verdict}")
 
 
 def print_result(r: TurnResult, verdict: str, reasons: list[str]) -> None:
@@ -335,13 +475,39 @@ def print_result(r: TurnResult, verdict: str, reasons: list[str]) -> None:
     log(f"Handoffs: {r.handoff_targets()} | Tools SSE: {r.tool_starts()} | Log tools: {grep_log_tools(r.session_id)}")
     if r.error:
         log(f"Harness: {r.error}")
-    log(f"Response: {r.response_text[:400].replace(chr(10), ' ')}")
+    if r.ground_truth and r.name.lower().startswith("youtube"):
+        print_ground_truth_table(r, verdict)
+    else:
+        log(f"Response: {r.response_text[:400].replace(chr(10), ' ')}")
+
+
+def print_ground_truth_only() -> int:
+    gt = capture_ground_truth(screenshot=True)
+    log("GROUND TRUTH (operator baseline)")
+    log(f"  active_title : {gt.active_title!r}")
+    log(f"  video_title  : {gt.video_title()!r}")
+    log(f"  browser      : {gt.browser or '(unknown)'}")
+    if gt.youtube_windows:
+        log("  media windows:")
+        for title in gt.youtube_windows:
+            log(f"    - {title}")
+    if gt.screenshot_path:
+        log(f"  screenshot   : {gt.screenshot_path}")
+    return 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--test", choices=["all", "homer", "friday", "plato", "youtube"], default="all")
+    parser.add_argument(
+        "--ground-truth-only",
+        action="store_true",
+        help="Print wmctrl/xdotool baseline without calling Jarvis",
+    )
     args = parser.parse_args()
+
+    if args.ground_truth_only:
+        return print_ground_truth_only()
 
     try:
         with urlopen(f"{BASE}/health", timeout=5) as resp:
@@ -354,19 +520,27 @@ def main() -> int:
     results: dict[str, str] = {}
 
     if args.test in ("all", "homer"):
-        r = run_turn("Homer", "Search the web for one current AI news headline and cite the source URL.")
+        r = run_turn("Homer", "Search the web for one current AI news headline and cite the source URL.", capture_gt=False)
         v, reasons = score_homer(r)
         print_result(r, v, reasons)
         results["homer"] = v
 
     if args.test in ("all", "friday"):
-        r = run_turn("Friday", "Take a Retinal HUD screenshot of my desktop and tell me the capture path.")
+        r = run_turn(
+            "Friday",
+            "Take a Retinal HUD screenshot of my desktop and tell me the capture path.",
+            capture_gt=False,
+        )
         v, reasons = score_friday(r)
         print_result(r, v, reasons)
         results["friday"] = v
 
     if args.test in ("all", "plato"):
-        r = run_turn("Plato", "Review src/jarvis/core/handoff_workflow.py for one fragility or risk. Be specific.")
+        r = run_turn(
+            "Plato",
+            "Review src/jarvis/core/handoff_workflow.py for one fragility or risk. Be specific.",
+            capture_gt=False,
+        )
         v, reasons = score_plato(r)
         print_result(r, v, reasons)
         results["plato"] = v
@@ -377,18 +551,24 @@ def main() -> int:
             "YouTube-T1",
             "Tell me what video am I currently watching and on what app or website",
             sid,
+            screenshot_gt=True,
         )
-        # Turn 2 must wait for a *second* completion line, not reuse turn 1's.
-        r2 = run_turn("YouTube-T2", "Summarise that video. It is comedy.", sid)
+        r2 = run_turn(
+            "YouTube-T2",
+            "Summarise that video. It is comedy.",
+            sid,
+            capture_gt=False,
+        )
         v, reasons = score_youtube(r1, r2)
-        print_result(r1, v + " (t1)", reasons[:1])
-        print_result(r2, v + " (t2)", reasons[1:])
+        t1_verdict, _ = score_video_identification(r1)
+        print_result(r1, t1_verdict + " (t1)", [r for r in reasons if r.startswith("t1:")])
+        print_result(r2, v + " (t2)", [r for r in reasons if r.startswith("t2:")])
         results["youtube"] = v
 
     log(f"\n{'='*60}\nSUMMARY")
     for k, v in results.items():
         log(f"  {k}: {v}")
-    return 1 if any(v == "FAIL" for v in results.values()) else 0
+    return 1 if any(v in ("FAIL", "NO_REPLY") for v in results.values()) else 0
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ import pytest
 
 from jarvis.config.models import (
     NIM_MODEL_BASKET,
+    SUBAGENT_MODEL_BASKET,
     apply_primary_model,
     is_house_party,
     normalize_client_primary,
@@ -27,8 +28,8 @@ def test_is_house_party_aliases(model):
 def test_normalize_session_model_specific():
     assert normalize_session_model("house_party") == "house-party"
     assert (
-        normalize_session_model("nvidia/mistralai/mistral-large-3-675b-instruct-2512")
-        == "mistralai/mistral-large-3-675b-instruct-2512"
+        normalize_session_model("nvidia/stepfun-ai/step-3.7-flash")
+        == "stepfun-ai/step-3.7-flash"
     )
 
 
@@ -50,8 +51,8 @@ def test_apply_primary_model_on_client():
     apply_primary_model(client, "house-party")
     assert client.primary_model == "house_party"
 
-    apply_primary_model(client, "nvidia/mistralai/mistral-large-3-675b-instruct-2512")
-    assert client.primary_model == "mistralai/mistral-large-3-675b-instruct-2512"
+    apply_primary_model(client, "nvidia/stepfun-ai/step-3.7-flash")
+    assert client.primary_model == "stepfun-ai/step-3.7-flash"
 
 
 def test_select_failover_models_uses_resolved_primary(monkeypatch):
@@ -63,13 +64,19 @@ def test_select_failover_models_uses_resolved_primary(monkeypatch):
         "house-party",
         ["model-a", "model-b", "model-c"],
     )
-    assert len(models) == 3
+    assert len(models) == 2
 
     models = select_failover_models(
         "nvidia/stepfun-ai/step-3.7-flash",
         list(NIM_MODEL_BASKET),
     )
     assert models[0] == "stepfun-ai/step-3.7-flash"
+
+
+def test_subagent_model_basket_excludes_mistral_and_nemotron():
+    assert "mistralai/mistral-large-3-675b-instruct-2512" not in SUBAGENT_MODEL_BASKET
+    assert "nvidia/nemotron-3-ultra-550b-a55b" not in SUBAGENT_MODEL_BASKET
+    assert len(SUBAGENT_MODEL_BASKET) >= 3
 
 
 def test_workspace_root_env_override(tmp_path, monkeypatch):

@@ -11,7 +11,7 @@ from agent_framework import Agent, AgentResponseUpdate, Content, MCPStdioTool, W
 from agent_framework._workflows._events import WorkflowEvent
 from agent_framework.orchestrations import HandoffAgentUserRequest, HandoffBuilder, HandoffSentEvent
 
-from jarvis.config.models import apply_primary_model
+from jarvis.config.models import SUBAGENT_MODEL_BASKET, apply_primary_model
 from jarvis.config.paths import get_skills_dir, get_subagent_dir
 from jarvis.core.agent import DEFAULT_SYSTEM_PROMPT, StarkNIMChatClient
 from jarvis.core.playwright_mcp import get_playwright_mcp_manager
@@ -44,8 +44,15 @@ Route to **Friday** when:
 - Desktop screenshot (Retinal HUD) is needed — capture-only or before kinetic work
 - Native app interaction: click, type, scroll, window focus (not browser)
 - The task cannot be done via bash/file tools alone
+- User asks what video, app, or website is currently on screen (desktop recon)
 
 Friday handoff MUST include: target app/window, desired end state, kinetic authorization, destructive-action flag if applicable.
+
+Route to **Homer** for follow-up summarisation when:
+- User asks to summarise a video or page already identified in this session
+- Pass Homer the **exact title, browser/app, and any YouTube URL** from Friday's prior report in the same session
+
+Homer handoff for video summary MUST include: video title, platform/browser, URL if known, and genre or depth if the user specified it.
 
 Route to **Plato** when:
 - `forge_skill` fails or a skill in `skills/` / `skills_staging/` needs audit
@@ -109,9 +116,9 @@ def build_handoff_workflow(
     mcp_tool: Optional[MCPStdioTool],
 ) -> Workflow:
     jarvis_client = StarkNIMChatClient(api_key=api_key)
-    homer_client = StarkNIMChatClient(api_key=api_key)
-    friday_client = StarkNIMChatClient(api_key=api_key)
-    plato_client = StarkNIMChatClient(api_key=api_key)
+    homer_client = StarkNIMChatClient(api_key=api_key, model_basket=SUBAGENT_MODEL_BASKET)
+    friday_client = StarkNIMChatClient(api_key=api_key, model_basket=SUBAGENT_MODEL_BASKET)
+    plato_client = StarkNIMChatClient(api_key=api_key, model_basket=SUBAGENT_MODEL_BASKET)
 
     apply_primary_model(jarvis_client, session_model)
     apply_primary_model(homer_client, homer_model)

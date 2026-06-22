@@ -12,6 +12,7 @@ from jarvis.config.paths import (
 )
 from jarvis.config.models import (
     NIM_MODEL_BASKET,
+    SUBAGENT_MODEL_BASKET,
     apply_primary_model,
     is_house_party,
     normalize_client_primary,
@@ -22,6 +23,7 @@ from jarvis.config.models import (
 
 __all__ = [
     "NIM_MODEL_BASKET",
+    "SUBAGENT_MODEL_BASKET",
     "apply_primary_model",
     "get_data_dir",
     "get_db_path",

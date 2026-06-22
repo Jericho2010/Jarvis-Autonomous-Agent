@@ -7,7 +7,14 @@ NIM_MODEL_BASKET: List[str] = [
     "nvidia/nemotron-3-ultra-550b-a55b",
     "moonshotai/kimi-k2.6",
     "stepfun-ai/step-3.7-flash",
-    "mistralai/mistral-large-3-675b-instruct-2512",
+]
+
+# Subagents run many tool rounds per turn; omit flaky/slow models from their rotation.
+SUBAGENT_MODEL_BASKET: List[str] = [
+    "deepseek-ai/deepseek-v4-pro",
+    "deepseek-ai/deepseek-v4-flash",
+    "moonshotai/kimi-k2.6",
+    "stepfun-ai/step-3.7-flash",
 ]
 
 HOUSE_PARTY_ALIASES = {
@@ -92,7 +99,7 @@ def select_failover_models(primary_model: str, basket_pool: List[str]) -> List[s
         return []
 
     if is_house_party(primary_model):
-        sample_size = min(3, len(pool))
+        sample_size = min(2, len(pool))
         return random.sample(pool, sample_size)
 
     resolved = resolve_basket_model(primary_model) or primary_model
@@ -101,5 +108,5 @@ def select_failover_models(primary_model: str, basket_pool: List[str]) -> List[s
         extras = random.sample(remaining, min(2, len(remaining)))
         return [resolved, *extras]
 
-    sample_size = min(3, len(pool))
+    sample_size = min(2, len(pool))
     return random.sample(pool, sample_size)

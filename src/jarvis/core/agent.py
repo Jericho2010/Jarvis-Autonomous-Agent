@@ -17,6 +17,23 @@ console = Console()
 
 from jarvis.config.models import NIM_MODEL_BASKET, select_failover_models
 
+
+def _is_rate_limit_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return "429" in text or "rate limit" in text or "too many requests" in text
+
+
+def _ordered_failover_models(
+    primary_model: str,
+    model_basket: List[str],
+    last_success_model: Optional[str],
+) -> List[str]:
+    models = select_failover_models(primary_model, list(model_basket))
+    if last_success_model and last_success_model in model_basket:
+        rest = [model for model in models if model != last_success_model]
+        return [last_success_model, *rest]
+    return models
+
 def format_result(result: Any) -> str:
     if result is None:
         return "None"
@@ -133,6 +150,7 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
         self.model_basket = model_basket or NIM_MODEL_BASKET
         self.primary_model = "house_party"
         self._clients: Dict[str, OpenAIChatCompletionClient] = {}
+        self._last_success_model: Optional[str] = None
 
     def _get_client(self, model: str) -> OpenAIChatCompletionClient:
         if model not in self._clients:
@@ -178,9 +196,13 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
     ) -> ChatResponse:
         last_exception = None
         
-        active_models = select_failover_models(self.primary_model, list(self.model_basket))
+        active_models = _ordered_failover_models(
+            self.primary_model,
+            list(self.model_basket),
+            self._last_success_model,
+        )
 
-        for model in active_models:
+        for index, model in enumerate(active_models):
             try:
                 client = self._get_client(model)
                 logger.info(f"Stark Core Matrix // Attempting turn with model: {model}")
@@ -195,10 +217,13 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
                     client.get_response(messages=messages, options=opt_copy, **kwargs),
                     timeout=15.0
                 )
+                self._last_success_model = model
                 return response
             except (asyncio.TimeoutError, Exception) as e:
                 logger.warning(f"Stark Core Matrix // Model {model} failed: {e}. Rotating...")
                 last_exception = e
+                if _is_rate_limit_error(e) and index + 1 < len(active_models):
+                    await asyncio.sleep(2 if index == 0 else 5)
         
         raise RuntimeError(f"All Stark Core Matrix models failed. Last exception: {last_exception}")
 
@@ -210,9 +235,13 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
     ) -> AsyncIterable[ChatResponseUpdate]:
         last_exception = None
         
-        active_models = select_failover_models(self.primary_model, list(self.model_basket))
+        active_models = _ordered_failover_models(
+            self.primary_model,
+            list(self.model_basket),
+            self._last_success_model,
+        )
 
-        for model in active_models:
+        for index, model in enumerate(active_models):
             try:
                 client = self._get_client(model)
                 logger.info(f"Stark Core Matrix // Attempting streaming turn with model: {model}")
@@ -235,10 +264,13 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
                         yield chunk
                     except StopAsyncIteration:
                         break
+                self._last_success_model = model
                 return
             except (asyncio.TimeoutError, Exception) as e:
                 logger.warning(f"Stark Core Matrix // Streaming model {model} failed: {e}. Rotating...")
                 last_exception = e
+                if _is_rate_limit_error(e) and index + 1 < len(active_models):
+                    await asyncio.sleep(2 if index == 0 else 5)
                 
         raise RuntimeError(f"All Stark Core Matrix streaming models failed. Last exception: {last_exception}")
 
