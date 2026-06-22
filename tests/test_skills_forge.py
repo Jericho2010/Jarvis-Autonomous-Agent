@@ -1,6 +1,7 @@
 import pytest
 from pathlib import Path
-from jarvis.skills.skill_forge import forge_skill, extract_imports, is_module_available
+from jarvis.skills.skill_forge import forge_skill, extract_imports, is_module_available, load_skills_from_dir
+from jarvis.config.paths import get_skills_dir, get_subagent_dir
 
 def test_extract_imports():
     code = """
@@ -32,3 +33,16 @@ def test_np_skill(x: int) -> int:
 """
     res = forge_skill("test_np_skill", code)
     assert "✓ Skill 'test_np_skill' forged successfully!" in res
+
+
+def test_load_skills_from_dir_loads_friday_app_launcher():
+    tools = load_skills_from_dir(get_subagent_dir("friday"))
+    names = {t.name for t in tools}
+    assert "stark_os_armor_list_apps" in names
+    assert "stark_os_armor_launch_app" in names
+
+
+def test_load_skills_from_dir_loads_text_associator():
+    tools = load_skills_from_dir(get_skills_dir())
+    names = {t.name for t in tools}
+    assert "creative_associator" in names

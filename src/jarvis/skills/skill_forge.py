@@ -3,6 +3,7 @@ import glob
 import logging
 import importlib.util
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, List, Optional
 from agent_framework import tool, FunctionTool
@@ -82,6 +83,17 @@ def install_dependency(import_name: str) -> bool:
             logger.error(f"Failed to install package {pypi_name}: {e}")
             return False
 
+def _exec_module_from_file(module_name: str, py_file: str | Path):
+    """Load a Python module from a file path (registers in sys.modules for dataclasses)."""
+    py_path = Path(py_file)
+    spec = importlib.util.spec_from_file_location(module_name, py_path)
+    if not spec or not spec.loader:
+        raise ImportError(f"Cannot load module spec for {py_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
 def load_skills_from_dir(skills_dir: Path) -> List[FunctionTool]:
     """Dynamically loads and returns all FunctionTools from the specified directory."""
     tools = []
@@ -95,17 +107,13 @@ def load_skills_from_dir(skills_dir: Path) -> List[FunctionTool]:
             continue
         module_name = Path(py_file).stem
         try:
-            spec = importlib.util.spec_from_file_location(module_name, py_file)
-            if spec and spec.loader:
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-                # Find all FunctionTool instances defined in the module
-                for attr_name in dir(module):
-                    attr = getattr(module, attr_name)
-                    if isinstance(attr, FunctionTool):
-                        # Avoid duplicates
-                        if attr not in tools:
-                            tools.append(attr)
+            module = _exec_module_from_file(module_name, py_file)
+            # Find all FunctionTool instances defined in the module
+            for attr_name in dir(module):
+                attr = getattr(module, attr_name)
+                if isinstance(attr, FunctionTool):
+                    if attr not in tools:
+                        tools.append(attr)
         except Exception as e:
             logger.error(f"Failed to load skill module {module_name} from {py_file}: {e}")
             
@@ -188,32 +196,29 @@ def _forge_skill_to_path(
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                spec = importlib.util.spec_from_file_location(skill_name, file_path)
-                if spec and spec.loader:
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
-                    tools_loaded = []
-                    for attr_name in dir(module):
-                        attr = getattr(module, attr_name)
-                        if isinstance(attr, FunctionTool):
-                            tools_loaded.append(attr.name)
+                module = _exec_module_from_file(skill_name, file_path)
+                tools_loaded = []
+                for attr_name in dir(module):
+                    attr = getattr(module, attr_name)
+                    if isinstance(attr, FunctionTool):
+                        tools_loaded.append(attr.name)
 
-                    if not tools_loaded:
-                        return (
-                            True,
-                            f"⚠️ Skill saved but no @tool instances found in {skill_name}.py.",
-                            test_passed,
-                        )
-
+                if not tools_loaded:
                     return (
                         True,
-                        (
-                            f"✓ Skill '{skill_name}' forged successfully!\n"
-                            f"Test Output:\n{test_output}\n"
-                            f"Loaded tools: {', '.join(tools_loaded)}"
-                        ),
+                        f"⚠️ Skill saved but no @tool instances found in {skill_name}.py.",
                         test_passed,
                     )
+
+                return (
+                    True,
+                    (
+                        f"✓ Skill '{skill_name}' forged successfully!\n"
+                        f"Test Output:\n{test_output}\n"
+                        f"Loaded tools: {', '.join(tools_loaded)}"
+                    ),
+                    test_passed,
+                )
             except ModuleNotFoundError as e:
                 missing_mod = e.name
                 top_level_mod = missing_mod.split(".")[0] if missing_mod else None

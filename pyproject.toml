@@ -26,6 +26,7 @@ dependencies = [
     "nvidia-riva-client>=2.19.0",
     "numpy",
     "nltk",
+    "scikit-learn>=1.4.0",
 ]
 
 [tool.uv]

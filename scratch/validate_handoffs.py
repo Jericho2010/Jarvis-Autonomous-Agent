@@ -22,6 +22,7 @@ BASE = "http://127.0.0.1:8008"
 LOG_PATH = Path(__file__).resolve().parents[1] / "data" / "server.log"
 SCRATCH_DIR = Path(__file__).resolve().parent
 TURN_TIMEOUT = 180.0
+YOUTUBE_TURN_TIMEOUT = 360.0
 IDLE_TIMEOUT = 45.0
 READ_TIMEOUT = 5.0
 MEDIA_TITLE_RE = re.compile(r"youtube|chrome|firefox|mozilla|vlc|mpv", re.I)
@@ -340,9 +341,11 @@ def run_turn(
     *,
     capture_gt: bool = True,
     screenshot_gt: bool = False,
+    turn_timeout: float | None = None,
 ) -> TurnResult:
     sid = session_id or create_session()
     result = TurnResult(name=name, session_id=sid, messages=[message])
+    timeout = turn_timeout if turn_timeout is not None else TURN_TIMEOUT
     if capture_gt:
         result.ground_truth = capture_ground_truth(screenshot=screenshot_gt)
         log(f"   [ground] active={result.ground_truth.active_title!r}")
@@ -360,7 +363,7 @@ def run_turn(
     thread.start()
     time.sleep(0.4)
     post_chat(sid, message)
-    deadline = time.time() + TURN_TIMEOUT
+    deadline = time.time() + timeout
     completed = False
     while time.time() < deadline and not stop.is_set():
         thread.join(timeout=3.0)
@@ -652,12 +655,14 @@ def main() -> int:
             "Tell me what video am I currently watching and on what app or website",
             sid,
             screenshot_gt=True,
+            turn_timeout=YOUTUBE_TURN_TIMEOUT,
         )
         r2 = run_turn(
             "YouTube-T2",
             "Summarise that video. It is comedy.",
             sid,
             capture_gt=False,
+            turn_timeout=YOUTUBE_TURN_TIMEOUT,
         )
         v, reasons = score_youtube(r1, r2)
         t1_verdict, _ = score_video_identification(r1)

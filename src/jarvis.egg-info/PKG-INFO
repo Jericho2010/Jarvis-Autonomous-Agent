@@ -107,7 +107,7 @@ graph TD
 - `uv` package manager (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 
 ### Installation
-Run the bootstrap script to create the virtual environment, install dependencies, and register the nightly 3:00 AM subconscious cron job:
+Run the bootstrap script to create the virtual environment, install dependencies, and register nightly subconscious cron jobs (Pray 2:00 AM, Dream 3:00 AM):
 ```bash
 chmod +x setup.sh run.sh
 ./setup.sh
@@ -167,8 +167,10 @@ JARVIS is a native agent built on MAF, using a decoupled, event-driven context p
 ### Hermes Self-Evolution Core
 The **Hermes Directive** allows JARVIS's personality and skills to self-author based on daily operation:
 *   **Soul Core** (`skills/jarvis_soul/SKILL.md`): Edwin butler persona packaged as a native MAF skill. Parsed and injected into system instructions at every TUI startup.
-*   **Subconscious Engine** (`src/evolution/subconscious.py`): Runs at 3:00 AM via cron. Executes 7 phases — Pray → Gather → Dream → Reflect → Evolve Soul → Forge Skills → Sync.
-*   **Self-Authorship**: Uses `StarkNIMChatClient` in `house_party` mode (LLaMA-free) to rewrite the SKILL.md personality body nightly, with full Git version history preserved.
+*   **Subconscious (Pray + Dream)** (`src/evolution/subconscious/`): Two cron jobs — **Pray** (2 AM) contemplates the saint of the day and may stage a skill; **Dream** (3 AM) ingests 24h memory and may stage a lateral skill. Review with `/evolve approve|reject` in the TUI. Soul files are **not** auto-rewritten.
+
+Manual run: `PYTHONPATH=src .venv/bin/python3 -m evolution.subconscious all`
+*   **Self-Authorship**: Uses `StarkNIMChatClient` with house-party failover. Approved skills sync to GitHub via narrow `sync_evolution_artifacts()`.
 
 ---
 
