@@ -80,6 +80,8 @@ graph TD
 
 No sibling repositories are required — Microsoft Agent Framework packages install from PyPI.
 
+On GitHub Codespaces or other headless hosts (no `DISPLAY`), Friday desktop tools (`xdotool`, `scrot`, `wmctrl`) are skipped at startup; the TUI, API server, and Homer browser MCP still work.
+
 ### Installation
 Run the bootstrap script to create the virtual environment, install dependencies, and register nightly subconscious cron jobs (Pray 2:00 AM, Dream 3:00 AM):
 ```bash

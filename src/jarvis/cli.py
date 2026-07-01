@@ -33,27 +33,10 @@ from jarvis.config.paths import (
     get_skills_dir,
     get_workspace_root,
 )
+from jarvis.core.system_deps import check_system_dependencies
 
 # Load env from root
 load_dotenv(get_env_file())
-
-def check_system_dependencies():
-    import shutil
-    missing = []
-    for cmd in ["xdotool", "scrot", "wmctrl"]:
-        if not shutil.which(cmd):
-            missing.append(cmd)
-
-    from jarvis.core.playwright_mcp import get_playwright_mcp_manager
-    node_ok, node_detail = get_playwright_mcp_manager().node_version_ok()
-    if not node_ok:
-        missing.append(f"node ({node_detail})")
-        
-    if missing:
-        console.print(f"\n[bold #FFD700]⚠ Stark System Diagnostics // Missing dependencies: {', '.join(missing)}[/bold #FFD700]")
-        console.print("[dim #FFD700]Desktop: sudo apt install scrot xdotool wmctrl[/dim]")
-        console.print("[dim #FFD700]Browser MCP: Node 18+ and `npx playwright install`[/dim]\n")
-        logger.warning(f"Startup Diagnostics: Missing dependencies {missing}")
 
 from jarvis.skills.skill_forge import load_skills_from_dir, forge_skill
 from jarvis.evolution.subconscious import BackgroundRoutineEngine
@@ -501,7 +484,7 @@ class JarvisTUI:
                     PID_FILE.unlink()
                 
         # Run diagnostics verification
-        check_system_dependencies()
+        check_system_dependencies(console)
 
         # 2. Get active session or create a new one from the API server
         async with httpx.AsyncClient() as client:
@@ -601,7 +584,7 @@ class JarvisTUI:
 
         player = shutil.which("aplay") or shutil.which("paplay")
         if not player:
-            console.print("[dim #FFD700]Voice reply synthesized — install aplay or paplay for TUI audio.[/dim]")
+            console.print("[dim #FFD700]Voice reply synthesized — install aplay or paplay for TUI audio.[/]")
             return
 
         wav_path = None

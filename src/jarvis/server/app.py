@@ -30,6 +30,7 @@ from jarvis.memory.memory_manager import MemoryManager
 from jarvis.memory.extractor import finalize_session
 from jarvis.core.agent import create_jarvis_agent, DEFAULT_SYSTEM_PROMPT
 from jarvis.core.display_env import log_startup_display_warning
+from jarvis.core.system_deps import check_system_dependencies
 from jarvis.core.handoff_workflow import clear_workflow_state, run_handoff_turn, submit_approval
 from jarvis.core.playwright_mcp import get_playwright_mcp_manager
 from jarvis.skills.skill_forge import load_skills_from_dir, forge_skill
@@ -89,26 +90,6 @@ async def init_services():
             await memory.init_db()
             initialized = True
 
-
-def check_system_dependencies():
-    import shutil
-    missing = []
-    for cmd in ["xdotool", "scrot", "wmctrl"]:
-        if not shutil.which(cmd):
-            missing.append(cmd)
-
-    manager = get_playwright_mcp_manager()
-    node_ok, node_detail = manager.node_version_ok()
-    if not node_ok:
-        missing.append(f"node ({node_detail})")
-        
-    if missing:
-        from rich.console import Console
-        console = Console()
-        console.print(f"\n[bold #FFD700]⚠ Stark System Diagnostics // Missing dependencies: {', '.join(missing)}[/bold #FFD700]")
-        console.print("[dim]Desktop: sudo apt install scrot xdotool wmctrl[/dim]")
-        console.print("[dim]Browser MCP: Node 18+ and `npx playwright install`[/dim]\n")
-        logger.warning(f"Startup Diagnostics: Missing dependencies {missing}")
 
 @app.on_event("startup")
 async def on_startup():
