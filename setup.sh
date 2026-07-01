@@ -12,9 +12,9 @@ else
 fi
 source .venv/bin/activate
 
-echo "JARVIS // Installing dependencies in editable mode..."
+echo "JARVIS // Installing dependencies from lockfile..."
 if command -v uv >/dev/null 2>&1; then
-    uv pip install -e .
+    uv sync --no-group dev
 else
     pip install -U pip wheel -q
     pip install -e .

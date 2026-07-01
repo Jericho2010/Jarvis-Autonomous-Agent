@@ -78,6 +78,8 @@ graph TD
 - Python 3.10+
 - `uv` package manager (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 
+No sibling repositories are required — Microsoft Agent Framework packages install from PyPI.
+
 ### Installation
 Run the bootstrap script to create the virtual environment, install dependencies, and register nightly subconscious cron jobs (Pray 2:00 AM, Dream 3:00 AM):
 ```bash

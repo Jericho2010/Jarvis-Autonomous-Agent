@@ -5,9 +5,9 @@ description = "Jarvis: AI companion TUI with subconscious evolution and custom s
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "agent-framework-core",
-    "agent-framework-openai",
-    "agent-framework-orchestrations",
+    "agent-framework-core>=1.8.0",
+    "agent-framework-openai>=1.8.0",
+    "agent-framework-orchestrations>=1.0.0b260210",
     "mcp>=1.24.0,<2",
     "prompt-toolkit>=3.0.43",
     "rich>=13.7.0",
@@ -29,11 +29,18 @@ dependencies = [
     "scikit-learn>=1.4.0",
 ]
 
-[tool.uv]
-dev-dependencies = [
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[dependency-groups]
+dev = [
     "pytest>=7.4.0",
     "pytest-asyncio>=0.21.0",
 ]
 
-[tool.uv.sources]
-agent-framework-orchestrations = { path = "../agent-framework/python/packages/orchestrations", editable = true }
+[tool.uv]
+prerelease = "allow"
