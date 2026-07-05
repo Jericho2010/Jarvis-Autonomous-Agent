@@ -19,7 +19,7 @@ Read this skill at the start of a new chat. Follow the user's latest message for
 1. **User intent first** — what are we doing this session? (fix, feature, validate, phone, refactor)
 2. **Quick orientation** — `git status`, `git log -3 --oneline` if code changed recently
 3. **Read targeted files** — use repo map below; don't load the whole tree
-4. **ARCHITECTURE.md** — for deep cuts only ([reference.md](reference.md) for day-to-day)
+4. **docs/ARCHITECTURE.md** — for deep cuts only ([reference.md](reference.md) for day-to-day)
 5. **Validate** — run focused `pytest` on touched modules; use `scratch/validate_handoffs.py` for live handoff work on PC
 6. **Task-specific plans** — if the user mentions a plan file, Cursor plan, or `scratch/plans/`, read that; otherwise improvise from code
 
@@ -40,7 +40,8 @@ Read this skill at the start of a new chat. Follow the user's latest message for
 | `src/jarvis/config/models.py` | NIM basket, house-party |
 | `skills/` | Root tools + `friday/`, `homer/`, `plato/` |
 | `scratch/validate_handoffs.py` | Live handoff validation |
-| `ARCHITECTURE.md` | Full architecture doc |
+| `docs/ARCHITECTURE.md` | Full architecture doc |
+| `docs/` | User docs: GETTING_STARTED, API, SKILLS, WEB_HUD, EVOLUTION, CONFIGURATION |
 
 **MAF deps:** `agent-framework-core`, `agent-framework-openai`, and `agent-framework-orchestrations` from PyPI (`prerelease = "allow"` in `pyproject.toml` for orchestrations).
 

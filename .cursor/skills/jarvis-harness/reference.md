@@ -7,10 +7,14 @@
 | `NVIDIA_API_KEY` | NIM chat + voice |
 | `GITHUB_PERSONAL_ACCESS_TOKEN` | Evolution/skills sync |
 | `JARVIS_WORKSPACE_ROOT` | Override repo root |
-| `JARVIS_DATA_DIR` / `JARVIS_DB_PATH` | SQLite location |
+| `JARVIS_DATA_DIR` / `JARVIS_DB_PATH` | SQLite and data location |
 | `JARVIS_PORT` | Server port (default 8008) |
+| `TAVILY_API_KEY` | Optional Homer premium search |
+| `FIRECRAWL_API_KEY` | Optional Homer premium extract |
+| `JARVIS_BUTLER_VOICE` | NIM TTS voice override |
+| `JARVIS_VOICE_RATE_SCALE` | TTS playback rate (default 0.92) |
 
-See `.env.example` for full list.
+See `.env.example` and `docs/CONFIGURATION.md` for full list.
 
 ## Server and clients
 
@@ -62,6 +66,18 @@ Triage text: `HANDOFF_TRIAGE_INSTRUCTIONS` in `handoff_workflow.py`.
 - DB: `data/jarvis.db` (override via `JARVIS_DB_PATH`)
 - FTS5 on messages; `facts`, `preferences` tables
 - `skills/memory_recall.py` → `recall_past_chats`
+- Session finalize: `src/jarvis/memory/extractor.py` → summary + durable facts on `/new`
+- Rehydration: `format_rehydration_block()` restores last 12 turns after server restart
+- Profile: `build_profile_prompt()` injects prefs, recent summaries, facts at session start
+
+## Voice mode
+
+- NIM gRPC TTS/STT: `src/jarvis/voice/nim_speech.py`
+- Config: `src/jarvis/config/voice.py` (default voice Ray.Calm, rate 0.92)
+- TUI: `/voicemode on|off`
+- API: `/v1/voice/status`, `/mode`, `/tts`, `/stt`
+- Web: `web/src/hooks/useVoiceMode.ts`
+- Off by default at server boot; preference key `voice_mode_enabled`
 
 ## Subconscious / evolution
 
