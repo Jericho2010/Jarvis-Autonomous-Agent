@@ -34,6 +34,13 @@ class TestCleanTextForSpeech:
         assert "|" not in cleaned
         assert "broken markup" in cleaned
 
+    def test_strips_espeak_and_bash_tool_noise(self):
+        text = "Hello Sir. execute_bash{espeak 'hi'} espeak -v en 'ignored'"
+        cleaned = clean_text_for_speech(text)
+        assert "execute_bash" not in cleaned.lower()
+        assert "espeak" not in cleaned.lower()
+        assert "Hello Sir" in cleaned
+
 
 class TestResolveButlerVoice:
     def test_prefers_male_calm_voice(self):
@@ -83,16 +90,31 @@ async def test_voice_status_without_client():
     mock_client = MagicMock()
     mock_client.tts_available = False
     mock_client.stt_available = False
-    mock_client.init_error = "NVIDIA_API_KEY is not configured"
+    mock_client.init_error = "NVIDIA_API_KEY is still the placeholder from .env.example."
     mock_client.ensure_voice.side_effect = RuntimeError("unavailable")
 
-    with patch("jarvis.server.app.get_speech_client", return_value=mock_client):
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.get("/v1/voice/status")
-            assert response.status_code == 200
-            data = response.json()
-            assert data["tts_available"] is False
-            assert data["stt_available"] is False
+    with patch.dict(os.environ, {"NVIDIA_API_KEY": "nvapi-your-key-here"}, clear=False):
+        with patch("jarvis.server.app.get_speech_client", return_value=mock_client):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get("/v1/voice/status")
+                assert response.status_code == 200
+                data = response.json()
+                assert data["tts_available"] is False
+                assert data["stt_available"] is False
+                assert data["api_key_configured"] is False
+                assert data["error"]
+                assert "placeholder" in data["error"].lower()
+
+
+def test_voice_mode_system_append_mentions_no_espeak():
+    from jarvis.config.voice import VOICE_MODE_SYSTEM_APPEND
+
+    text = VOICE_MODE_SYSTEM_APPEND.lower()
+    assert "espeak" in text
+    assert "execute_bash" in text
+    assert "nvidia tts" in text
 
 
 @pytest.mark.anyio
@@ -183,4 +205,12 @@ def test_nim_speech_client_missing_api_key():
     with patch.dict(os.environ, {"NVIDIA_API_KEY": ""}, clear=False):
         client = NIMSpeechClient(api_key="")
         assert client.is_available is False
-        assert client.init_error == "NVIDIA_API_KEY is not configured"
+        assert client.init_error is not None
+        assert "NVIDIA_API_KEY" in client.init_error
+
+
+def test_nim_speech_client_rejects_placeholder_key():
+    client = NIMSpeechClient(api_key="nvapi-your-key-here")
+    assert client.is_available is False
+    assert client.init_error is not None
+    assert "placeholder" in client.init_error.lower()

@@ -41,3 +41,12 @@ VOICE_MODE_PREF_KEY = "voice_mode_enabled"
 TTS_SAMPLE_RATE_HZ = 22050
 ASR_SAMPLE_RATE_HZ = 16000
 MAX_TTS_CHARS = 4000
+
+VOICE_MODE_SYSTEM_APPEND = """
+# VOICE MODE (ACTIVE)
+The platform speaks your replies automatically via NVIDIA TTS (male English butler voice) after each turn.
+- Write normal plain-English replies only.
+- When asked to say something aloud, put the words in your text response.
+- Do NOT use espeak, festival, say, aplay, paplay, or any shell/audio command to produce speech.
+- Do NOT use execute_bash to speak. Never invoke TTS yourself — the system handles audio.
+"""
