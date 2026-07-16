@@ -100,11 +100,14 @@ def test_build_handoff_workflow_enables_autonomous_mode():
     from agent_framework.orchestrations import HandoffBuilder
     from jarvis.core.handoff_workflow import build_handoff_workflow
 
-    with patch.object(
-        HandoffBuilder,
-        "with_autonomous_mode",
-        wraps=HandoffBuilder.with_autonomous_mode,
-    ) as mock_auto:
+    captured: list[dict] = []
+    real_autonomous = HandoffBuilder.with_autonomous_mode
+
+    def tracking_autonomous(self, **kwargs):
+        captured.append(kwargs)
+        return real_autonomous(self, **kwargs)
+
+    with patch.object(HandoffBuilder, "with_autonomous_mode", tracking_autonomous):
         with patch("jarvis.core.handoff_workflow.load_skills_from_dir", return_value=[]):
             with patch("jarvis.core.handoff_workflow.apply_primary_model"):
                 build_handoff_workflow(
@@ -117,8 +120,8 @@ def test_build_handoff_workflow_enables_autonomous_mode():
                     mcp_tool=None,
                 )
 
-    mock_auto.assert_called_once()
-    kwargs = mock_auto.call_args.kwargs
+    assert len(captured) == 1
+    kwargs = captured[0]
     assert kwargs["turn_limits"]["homer"] == 12
     assert kwargs["turn_limits"]["friday"] == 8
     assert kwargs["turn_limits"]["plato"] == 10

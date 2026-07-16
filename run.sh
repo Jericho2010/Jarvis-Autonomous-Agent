@@ -45,4 +45,58 @@ if [ -f data/server.pid ]; then
     sleep 1
 fi
 
+# Startup self-check (honest status before launching Jarvis)
+echo "JARVIS // Running startup checks..."
+python3 <<'PY'
+import sys
+from pathlib import Path
+
+root = Path.cwd()
+failures = []
+warnings = []
+
+try:
+    from jarvis.config.paths import get_env_file, get_web_dist_dir
+    from jarvis.config.nvidia import nvidia_api_key_problem
+    from dotenv import load_dotenv
+
+    load_dotenv(get_env_file())
+    from jarvis.server import app as _app  # noqa: F401
+    print("  ✓ Server module imports")
+except Exception as exc:
+    print(f"  ✗ Server import failed: {exc}")
+    sys.exit(1)
+
+try:
+    import riva.client  # noqa: F401
+    print("  ✓ Speech client (riva)")
+except ImportError:
+    failures.append("riva module missing — voice mode will not work")
+
+web_dist = get_web_dist_dir()
+index = web_dist / "index.html"
+if index.is_file():
+    bundle = " ".join(p.read_text(errors="ignore") for p in web_dist.rglob("*.js"))
+    if "voicemode" in bundle.lower():
+        print("  ✓ Web HUD built with voice mode UI")
+    else:
+        warnings.append("Web bundle exists but voicemode UI not found — rebuild web/")
+else:
+    warnings.append("web/dist missing — run: (cd web && npm run build)")
+
+key_problem = nvidia_api_key_problem()
+if key_problem:
+    warnings.append(f"API key: {key_problem}")
+else:
+    print("  ✓ NVIDIA_API_KEY looks configured")
+
+for msg in warnings:
+    print(f"  ⚠ {msg}")
+for msg in failures:
+    print(f"  ✗ {msg}")
+
+if failures:
+    sys.exit(1)
+PY
+
 python3 -m jarvis.cli "$@"

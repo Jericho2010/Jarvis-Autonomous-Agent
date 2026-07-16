@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 import contextvars
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,11 +22,13 @@ from jarvis.config.models import (
 from jarvis.config.paths import (
     get_data_dir,
     get_db_path,
+    get_env_file,
     get_skills_dir,
     get_subagent_dir,
     get_web_dist_dir,
     get_webvision_dir,
 )
+from jarvis.config.nvidia import format_nvidia_speech_error, nvidia_api_key_problem
 from jarvis.memory.memory_manager import MemoryManager
 from jarvis.memory.extractor import finalize_session
 from jarvis.core.agent import create_jarvis_agent, DEFAULT_SYSTEM_PROMPT
@@ -35,8 +38,10 @@ from jarvis.core.handoff_workflow import clear_workflow_state, run_handoff_turn,
 from jarvis.core.playwright_mcp import get_playwright_mcp_manager
 from jarvis.skills.skill_forge import load_skills_from_dir, forge_skill
 from jarvis.core.subagents import current_session_id, session_broadcasters, broadcast_event
-from jarvis.config.voice import VOICE_MODE_PREF_KEY
+from jarvis.config.voice import VOICE_MODE_PREF_KEY, VOICE_MODE_SYSTEM_APPEND
 from jarvis.voice.nim_speech import clean_text_for_speech, get_speech_client
+
+load_dotenv(get_env_file())
 
 # Configure logging
 logging.basicConfig(
@@ -296,6 +301,8 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
         if soul_body:
             custom_instructions += f"\n\n# ACTIVE PERSONA PROFILE\n{soul_body}"
         custom_instructions += f"\n\n{profile}"
+        if await _voice_mode_enabled():
+            custom_instructions += f"\n\n{VOICE_MODE_SYSTEM_APPEND}"
         
         skills_tools = load_skills_from_dir(get_skills_dir())
         all_tools = [forge_skill] + skills_tools
@@ -418,7 +425,6 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
         if accumulated_text.strip():
             await memory.add_message(session_id, "assistant", accumulated_text)
 
-        voice_prefs = await memory.get_preferences()
         if await _voice_mode_enabled():
             spoken_text = clean_text_for_speech(accumulated_text)
             if spoken_text:
@@ -732,6 +738,7 @@ async def get_voice_status():
             warning = client.persona_mismatch_warning()
         except Exception as exc:
             logger.warning("Voice status resolution failed: %s", exc)
+    api_key_error = nvidia_api_key_problem()
     return {
         "enabled": enabled,
         "voice": voice,
@@ -740,7 +747,8 @@ async def get_voice_status():
         "persona_warning": warning,
         "tts_available": client.tts_available,
         "stt_available": client.stt_available,
-        "error": client.init_error,
+        "error": client.init_error or api_key_error,
+        "api_key_configured": api_key_error is None,
     }
 
 @app.post("/v1/voice/mode")
@@ -770,7 +778,10 @@ async def synthesize_voice(req: VoiceTTSRequest):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.exception("TTS synthesis failed")
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=502,
+            detail=format_nvidia_speech_error(exc),
+        ) from exc
 
     from fastapi.responses import Response
     return Response(content=wav_bytes, media_type="audio/wav")
@@ -791,7 +802,10 @@ async def transcribe_voice(audio: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         logger.exception("STT transcription failed")
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=502,
+            detail=format_nvidia_speech_error(exc),
+        ) from exc
     return result
 
 def import_json_str(data: dict) -> str:
