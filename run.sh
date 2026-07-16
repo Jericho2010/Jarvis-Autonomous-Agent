@@ -51,7 +51,6 @@ python3 <<'PY'
 import sys
 from pathlib import Path
 
-root = Path.cwd()
 failures = []
 warnings = []
 
@@ -76,8 +75,11 @@ except ImportError:
 web_dist = get_web_dist_dir()
 index = web_dist / "index.html"
 if index.is_file():
-    bundle = " ".join(p.read_text(errors="ignore") for p in web_dist.rglob("*.js"))
-    if "voicemode" in bundle.lower():
+    found_voicemode = any(
+        "voicemode" in p.read_text(errors="ignore").lower()
+        for p in web_dist.rglob("*.js")
+    )
+    if found_voicemode:
         print("  ✓ Web HUD built with voice mode UI")
     else:
         warnings.append("Web bundle exists but voicemode UI not found — rebuild web/")

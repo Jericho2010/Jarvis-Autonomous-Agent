@@ -7,7 +7,7 @@ _PLACEHOLDER_PATTERNS = (
     re.compile(r"^your-.*-here$", re.I),
     re.compile(r"^changeme$", re.I),
     re.compile(r"^xxx+$", re.I),
-    re.compile(r"^replace[-_]?me", re.I),
+    re.compile(r"^replace[-_]?me$", re.I),
 )
 
 

@@ -301,7 +301,8 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
         if soul_body:
             custom_instructions += f"\n\n# ACTIVE PERSONA PROFILE\n{soul_body}"
         custom_instructions += f"\n\n{profile}"
-        if await _voice_mode_enabled():
+        voice_on = await _voice_mode_enabled()
+        if voice_on:
             custom_instructions += f"\n\n{VOICE_MODE_SYSTEM_APPEND}"
         
         skills_tools = load_skills_from_dir(get_skills_dir())
@@ -348,6 +349,8 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
             
             config = parse_simple_yaml(config_file.read_text(encoding="utf-8"))
             _, instructions = load_compiled_soul(active_agent_id)
+            if voice_on:
+                instructions = f"{instructions}\n\n{VOICE_MODE_SYSTEM_APPEND}"
             
             model = config.get("model", "house-party")
             sub_tools = load_skills_from_dir(subagent_dir)

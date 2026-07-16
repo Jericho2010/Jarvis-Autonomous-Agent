@@ -18,6 +18,10 @@ class TestNvidiaApiKeyProblem:
     def test_valid_looking_key(self):
         assert nvidia_api_key_problem("nvapi-" + "a" * 40) is None
 
+    def test_replace_me_requires_exact_match(self):
+        assert nvidia_api_key_problem("replace-me") is not None
+        assert nvidia_api_key_problem("nvapi-replaceme-but-real-looking-key") is None
+
 
 class TestFormatNvidiaSpeechError:
     def test_permission_denied_with_placeholder(self, monkeypatch):
