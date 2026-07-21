@@ -117,14 +117,7 @@ class JarvisTUI:
 
     async def init(self):
         # 1. Verify system dependencies
-        ok, msg = check_system_dependencies()
-        if not ok:
-            console.print(Panel(
-                f"[bold red]System dependencies failed configuration verification:[/]\n\n{msg}\n\n"
-                "[yellow]Attempting to bootstrap system components...[/]",
-                title="Dependency Failure Warning",
-                border_style="red"
-            ))
+        check_system_dependencies(console)
 
         # 2. Setup server connection daemon
         pid, active_port = get_running_server_info()
