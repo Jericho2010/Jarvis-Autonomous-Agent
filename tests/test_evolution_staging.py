@@ -1,8 +1,8 @@
 import pytest
 from pathlib import Path
 
-from evolution.subconscious import staging
-from evolution.subconscious.forge_pipeline import parse_forge_response, validate_forge_proposal
+from jarvis.evolution.subconscious import staging
+from jarvis.evolution.subconscious.forge_pipeline import parse_forge_response, validate_forge_proposal
 
 
 @pytest.fixture

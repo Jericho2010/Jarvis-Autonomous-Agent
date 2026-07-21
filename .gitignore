@@ -9,3 +9,10 @@ __pycache__/
 .pytest_cache/
 webvision/
 data/*.log
+data/*.txt
+data/sessions/
+data/evolution_logs/
+*.egg-info/
+src/*.egg-info/
+scratch/
+.cursor/*.log

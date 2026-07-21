@@ -14,10 +14,10 @@ source .venv/bin/activate
 
 echo "JARVIS // Installing dependencies from lockfile..."
 if command -v uv >/dev/null 2>&1; then
-    uv sync --no-group dev
+    uv sync --no-group dev --all-extras
 else
     pip install -U pip wheel -q
-    pip install -e .
+    pip install -e .[analysis]
 fi
 
 if [ ! -f .env ]; then
@@ -50,11 +50,12 @@ fi
 
 echo "JARVIS // Configuring nightly subconscious cron jobs (Pray 2:00 AM, Dream 3:00 AM)..."
 if command -v crontab >/dev/null 2>&1; then
-    PRAY_CRON="0 2 * * * cd $SCRIPT_DIR && PYTHONPATH=$SCRIPT_DIR/src $SCRIPT_DIR/.venv/bin/python3 -m evolution.subconscious pray >> $SCRIPT_DIR/data/subconscious_cron.log 2>&1"
-    DREAM_CRON="0 3 * * * cd $SCRIPT_DIR && PYTHONPATH=$SCRIPT_DIR/src $SCRIPT_DIR/.venv/bin/python3 -m evolution.subconscious dream >> $SCRIPT_DIR/data/subconscious_cron.log 2>&1"
-    (crontab -l 2>/dev/null \
+    PRAY_CRON="0 2 * * * cd $SCRIPT_DIR && PYTHONPATH=$SCRIPT_DIR/src $SCRIPT_DIR/.venv/bin/python3 -m jarvis.evolution.subconscious pray >> $SCRIPT_DIR/data/subconscious_cron.log 2>&1"
+    DREAM_CRON="0 3 * * * cd $SCRIPT_DIR && PYTHONPATH=$SCRIPT_DIR/src $SCRIPT_DIR/.venv/bin/python3 -m jarvis.evolution.subconscious dream >> $SCRIPT_DIR/data/subconscious_cron.log 2>&1"
+    ( (crontab -l 2>/dev/null || true) \
         | grep -F -v "subconscious.py" \
         | grep -F -v "evolution.subconscious" \
+        | grep -F -v "jarvis.evolution.subconscious" \
         ; echo "$PRAY_CRON" ; echo "$DREAM_CRON") | crontab -
 else
     echo "JARVIS // crontab not available — skipping subconscious cron setup."

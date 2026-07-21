@@ -105,13 +105,13 @@ def test_check_jarvis_service_and_find_free_port():
 
 
 def test_daemon_lifecycle(tmp_path):
-    from jarvis.cli import is_pid_alive, get_running_server_info, start_server_daemon, stop_server_daemon, PID_FILE
+    from jarvis.server_control import is_pid_alive, get_running_server_info, start_server_daemon, stop_server_daemon, PID_FILE
     import signal
     from unittest.mock import patch, MagicMock
     
     test_pid_file = tmp_path / "server.pid"
     
-    with patch("jarvis.cli.PID_FILE", test_pid_file):
+    with patch("jarvis.server_control.PID_FILE", test_pid_file):
         # 1. PID file doesn't exist initially
         pid, port = get_running_server_info()
         assert pid is None
@@ -134,7 +134,7 @@ def test_daemon_lifecycle(tmp_path):
         mock_proc.pid = 99999
         
         with patch("subprocess.Popen", return_value=mock_proc) as mock_popen, \
-             patch("jarvis.cli.check_jarvis_service", side_effect=[(False, False), (True, True)]) as mock_check, \
+             patch("jarvis.server_control.check_jarvis_service", side_effect=[(False, False), (True, True)]) as mock_check, \
              patch("time.sleep") as mock_sleep:
              
             success = start_server_daemon(8008)
@@ -143,14 +143,14 @@ def test_daemon_lifecycle(tmp_path):
             assert test_pid_file.read_text() == "99999\n8008\n"
             
             # Check info
-            with patch("jarvis.cli.is_pid_alive", return_value=True):
+            with patch("jarvis.server_control.is_pid_alive", return_value=True):
                 pid, port = get_running_server_info()
                 assert pid == 99999
                 assert port == 8008
                 
         # 4. Test stop_server_daemon
         with patch("os.killpg") as mock_killpg, \
-             patch("jarvis.cli.is_pid_alive", side_effect=[True, False]), \
+             patch("jarvis.server_control.is_pid_alive", side_effect=[True, False]), \
              patch("time.sleep") as mock_sleep:
              
             success = stop_server_daemon()

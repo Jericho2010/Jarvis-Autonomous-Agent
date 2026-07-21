@@ -2,9 +2,9 @@ import argparse
 import asyncio
 import sys
 
-from evolution.subconscious.common import bootstrap
-from evolution.subconscious.dream import run_dream
-from evolution.subconscious.pray import run_pray
+from .common import bootstrap
+from .dream import run_dream
+from .pray import run_pray
 
 
 def main(argv: list[str] | None = None) -> None:

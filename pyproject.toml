@@ -24,10 +24,15 @@ dependencies = [
     "httpx>=0.27.0",
     "python-multipart>=0.0.9",
     "nvidia-riva-client>=2.19.0",
-    "numpy",
-    "nltk",
+]
+
+[project.optional-dependencies]
+analysis = [
+    "numpy>=1.22.0",
+    "nltk>=3.8.0",
     "scikit-learn>=1.4.0",
 ]
+
 
 [build-system]
 requires = ["setuptools>=61"]

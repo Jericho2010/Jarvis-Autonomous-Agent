@@ -11,16 +11,16 @@ from jarvis.core.agent import StarkNIMChatClient
 from jarvis.memory.memory_manager import MemoryManager
 from jarvis.skills.skill_forge import forge_to_staging
 
-from evolution.subconscious.common import bootstrap, require_api_key, setup_logging
-from evolution.subconscious.forge_pipeline import parse_forge_response, validate_forge_proposal
-from evolution.subconscious.ingest import gather_dream_context
-from evolution.subconscious.staging import (
+from .common import bootstrap, require_api_key, setup_logging
+from .forge_pipeline import parse_forge_response, validate_forge_proposal
+from .ingest import gather_dream_context
+from .staging import (
     ensure_staging_dirs,
     is_dream_duplicate_of_pray,
     register_staged_skill,
     resolve_unique_name,
 )
-from evolution.subconscious.sync import sync_after_evolution
+from .sync import sync_after_evolution
 
 LOG = logging.getLogger("jarvis.evolution.dream")
 
