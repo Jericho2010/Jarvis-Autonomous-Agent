@@ -2,19 +2,18 @@ import random
 from typing import List, Optional
 
 NIM_MODEL_BASKET: List[str] = [
+    "nvidia/nemotron-3-super-120b-a12b",
     "deepseek-ai/deepseek-v4-pro",
-    "deepseek-ai/deepseek-v4-flash",
-    "nvidia/nemotron-3-ultra-550b-a55b",
-    "moonshotai/kimi-k2.6",
-    "stepfun-ai/step-3.7-flash",
+    "stepfun-ai/step-3.5-flash",
+    "nvidia/nemotron-mini-4b-instruct",
 ]
 
 # Subagents run many tool rounds per turn; omit flaky/slow models from their rotation.
 SUBAGENT_MODEL_BASKET: List[str] = [
+    "nvidia/nemotron-3-super-120b-a12b",
     "deepseek-ai/deepseek-v4-pro",
-    "deepseek-ai/deepseek-v4-flash",
-    "moonshotai/kimi-k2.6",
-    "stepfun-ai/step-3.7-flash",
+    "stepfun-ai/step-3.5-flash",
+    "nvidia/nemotron-mini-4b-instruct",
 ]
 
 HOUSE_PARTY_ALIASES = {

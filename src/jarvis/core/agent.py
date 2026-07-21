@@ -1,6 +1,7 @@
 import os
 import logging
 import asyncio
+import traceback
 from typing import Any, AsyncIterable, Awaitable, Callable, Dict, List, Mapping, Optional, Sequence
 from pathlib import Path
 
@@ -215,12 +216,12 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
                     
                 response = await asyncio.wait_for(
                     client.get_response(messages=messages, options=opt_copy, **kwargs),
-                    timeout=15.0
+                    timeout=30.0
                 )
                 self._last_success_model = model
                 return response
             except (asyncio.TimeoutError, Exception) as e:
-                logger.warning(f"Stark Core Matrix // Model {model} failed: {e}. Rotating...")
+                logger.warning(f"Stark Core Matrix // Model {model} failed: {e!r}. Traceback:\n{traceback.format_exc()}. Rotating...")
                 last_exception = e
                 if _is_rate_limit_error(e) and index + 1 < len(active_models):
                     await asyncio.sleep(2 if index == 0 else 5)
@@ -254,20 +255,20 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
                 
                 stream = await asyncio.wait_for(
                     client.get_response(messages=messages, stream=True, options=opt_copy, **kwargs),
-                    timeout=15.0
+                    timeout=30.0
                 )
                 
                 iterator = aiter(stream)
                 while True:
                     try:
-                        chunk = await asyncio.wait_for(anext(iterator), timeout=15.0)
+                        chunk = await asyncio.wait_for(anext(iterator), timeout=30.0)
                         yield chunk
                     except StopAsyncIteration:
                         break
                 self._last_success_model = model
                 return
             except (asyncio.TimeoutError, Exception) as e:
-                logger.warning(f"Stark Core Matrix // Streaming model {model} failed: {e}. Rotating...")
+                logger.warning(f"Stark Core Matrix // Streaming model {model} failed: {e!r}. Traceback:\n{traceback.format_exc()}. Rotating...")
                 last_exception = e
                 if _is_rate_limit_error(e) and index + 1 < len(active_models):
                     await asyncio.sleep(2 if index == 0 else 5)

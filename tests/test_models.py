@@ -28,21 +28,21 @@ def test_is_house_party_aliases(model):
 def test_normalize_session_model_specific():
     assert normalize_session_model("house_party") == "house-party"
     assert (
-        normalize_session_model("nvidia/stepfun-ai/step-3.7-flash")
-        == "stepfun-ai/step-3.7-flash"
+        normalize_session_model("nvidia/stepfun-ai/step-3.5-flash")
+        == "stepfun-ai/step-3.5-flash"
     )
 
 
 def test_resolve_basket_model_strips_nvidia_prefix():
-    resolved = resolve_basket_model("nvidia/stepfun-ai/step-3.7-flash")
-    assert resolved == "stepfun-ai/step-3.7-flash"
+    resolved = resolve_basket_model("nvidia/stepfun-ai/step-3.5-flash")
+    assert resolved == "stepfun-ai/step-3.5-flash"
 
 
 def test_normalize_client_primary_maps_house_party():
     assert normalize_client_primary("house-party") == "house_party"
     assert (
-        normalize_client_primary("nvidia/moonshotai/kimi-k2.6")
-        == "moonshotai/kimi-k2.6"
+        normalize_client_primary("nvidia/stepfun-ai/step-3.5-flash")
+        == "stepfun-ai/step-3.5-flash"
     )
 
 
@@ -51,8 +51,8 @@ def test_apply_primary_model_on_client():
     apply_primary_model(client, "house-party")
     assert client.primary_model == "house_party"
 
-    apply_primary_model(client, "nvidia/stepfun-ai/step-3.7-flash")
-    assert client.primary_model == "stepfun-ai/step-3.7-flash"
+    apply_primary_model(client, "nvidia/stepfun-ai/step-3.5-flash")
+    assert client.primary_model == "stepfun-ai/step-3.5-flash"
 
 
 def test_select_failover_models_uses_resolved_primary(monkeypatch):
@@ -67,10 +67,10 @@ def test_select_failover_models_uses_resolved_primary(monkeypatch):
     assert len(models) == 2
 
     models = select_failover_models(
-        "nvidia/stepfun-ai/step-3.7-flash",
+        "nvidia/stepfun-ai/step-3.5-flash",
         list(NIM_MODEL_BASKET),
     )
-    assert models[0] == "stepfun-ai/step-3.7-flash"
+    assert models[0] == "stepfun-ai/step-3.5-flash"
 
 
 def test_subagent_model_basket_excludes_mistral_and_nemotron():
