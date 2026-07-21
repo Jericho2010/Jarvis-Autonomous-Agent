@@ -78,6 +78,7 @@ class JarvisTUI:
         self.spawned_server = None
         self.external_server = False
         self.in_turn = False
+        self.turn_complete_event = asyncio.Event()
         self.kb = KeyBindings()
         self._setup_bindings()
 
@@ -101,6 +102,14 @@ class JarvisTUI:
 
     def print_splash(self):
         render_splash(self.port, self.session_id, self.session_title)
+
+    def set_session(self, session_id: str, title: Optional[str] = None):
+        """Re-keys the active session and spawns a fresh SSE stream subscription."""
+        self.session_id = session_id
+        self.session_title = title or session_id
+        if hasattr(self, "sse_task") and self.sse_task:
+            self.sse_task.cancel()
+        self.sse_task = asyncio.create_task(self.sse_listener())
 
     def _bottom_toolbar(self):
         agent = self.active_agent_id.upper()
@@ -147,19 +156,18 @@ class JarvisTUI:
         async with httpx.AsyncClient() as client:
             try:
                 res = await client.post(f"http://127.0.0.1:{self.port}/v1/sessions", json={}, timeout=5.0)
-                self.session_id = res.json()["session_id"]
-                self.session_title = self.session_id
+                session_id = res.json()["session_id"]
+                session_title = session_id
                 
                 try:
-                    session_details = await client.get(f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}", timeout=5.0)
+                    session_details = await client.get(f"http://127.0.0.1:{self.port}/v1/sessions/{session_id}", timeout=5.0)
                     self.current_model = session_details.json().get("model") or "house-party"
                 except Exception:
                     self.current_model = "house-party"
+                self.set_session(session_id, session_title)
             except Exception as e:
                 console.print(f"[bold red]❌ Failed to initialize dialogue session:[/] {e}")
                 self.session_id = "local_fallback"
-
-        self.sse_task = asyncio.create_task(self.sse_listener())
 
         # 3. Startup the subconscious routine engine
         async def _background_runner(prompt: str):
@@ -241,8 +249,27 @@ class JarvisTUI:
                 except OSError:
                     pass
 
+    def _cleanup_live_and_print(self):
+        """Utility to close any open rich Live rendering display and print accumulated text/reasoning."""
+        if hasattr(self, "live") and self.live:
+            try:
+                self.live.stop()
+            except Exception:
+                pass
+            self.live = None
+        if hasattr(self, "reasoning_text") and self.reasoning_text.strip():
+            console.print(Panel(self.reasoning_text.strip(), title="Thinking Processes", border_style="#FFD700", title_align="left"))
+            self.reasoning_text = ""
+        if hasattr(self, "response_text") and self.response_text.strip():
+            console.print(Markdown(self.response_text))
+            self.response_text = ""
+
     async def sse_listener(self):
-        """Listens to the active session stream and prints updates if not currently in a TUI-driven turn."""
+        """Unified, long-lived background reader of the session event stream."""
+        self.reasoning_text = ""
+        self.response_text = ""
+        self.live = None
+
         while True:
             if not self.session_id or self.session_id == "local_fallback":
                 await asyncio.sleep(2.0)
@@ -254,23 +281,7 @@ class JarvisTUI:
                         "GET",
                         f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}/stream?client_id=tui"
                     ) as response:
-                        event_type = None
-                        reasoning_text = ""
-                        response_text = ""
-                        
-                        def cleanup_and_print():
-                            nonlocal reasoning_text, response_text
-                            if reasoning_text.strip():
-                                console.print(Panel(reasoning_text.strip(), title="Thinking Processes", border_style="#FFD700", title_align="left"))
-                                reasoning_text = ""
-                            if response_text.strip():
-                                console.print(Markdown(response_text))
-                                response_text = ""
-
                         async for line in response.aiter_lines():
-                            if self.in_turn:
-                                continue
-                                
                             line = line.strip()
                             if not line:
                                 continue
@@ -288,18 +299,40 @@ class JarvisTUI:
                                 if event_type == "text_chunk":
                                     text = data.get("text", "")
                                     if text:
-                                        response_text += text
+                                        if not self.live:
+                                            from rich.live import Live
+                                            self.live = Live(Group(), refresh_per_second=15, console=raw_console, transient=True)
+                                            self.live.start()
+                                        self.response_text += text
+                                        
+                                        renderables = []
+                                        if self.reasoning_text:
+                                            renderables.append(Panel(self.reasoning_text, title="Thinking Processes", border_style="#FFD700", title_align="left"))
+                                        if self.response_text:
+                                            renderables.append(Markdown(self.response_text))
+                                        self.live.update(Group(*renderables))
                                         
                                 elif event_type == "reasoning_chunk":
                                     text = data.get("text", "")
                                     if text:
-                                        reasoning_text += text
+                                        if not self.live:
+                                            from rich.live import Live
+                                            self.live = Live(Group(), refresh_per_second=15, console=raw_console, transient=True)
+                                            self.live.start()
+                                        self.reasoning_text += text
+                                        
+                                        renderables = []
+                                        if self.reasoning_text:
+                                            renderables.append(Panel(self.reasoning_text, title="Thinking Processes", border_style="#FFD700", title_align="left"))
+                                        if self.response_text:
+                                            renderables.append(Markdown(self.response_text))
+                                        self.live.update(Group(*renderables))
                                         
                                 elif event_type == "tool_call_start":
-                                    cleanup_and_print()
+                                    self._cleanup_live_and_print()
                                     name = data.get("name", "").upper()
                                     args = data.get("arguments", {})
-                                    console.print(f"\n[bold #E63946]⚙ TOOL EXECUTION (Web UI):[/] [bold #FFD700]{name}[/]")
+                                    console.print(f"\n[bold #E63946]⚙ TOOL EXECUTION:[/] [bold #FFD700]{name}[/]")
                                     if args:
                                         for k, v in args.items():
                                             v_str = str(v).replace("\n", " ")
@@ -308,7 +341,7 @@ class JarvisTUI:
                                             console.print(f"  [bold #FFD700]▪ {k}:[/] [white]{v_str}[/]", highlight=False)
                                             
                                 elif event_type == "tool_call_complete":
-                                    cleanup_and_print()
+                                    self._cleanup_live_and_print()
                                     name = data.get("name", "").upper()
                                     out = data.get("output", "") or data.get("error", "")
                                     if len(out) > 1000:
@@ -322,7 +355,7 @@ class JarvisTUI:
                                     ))
                                     
                                 elif event_type == "user_message":
-                                    cleanup_and_print()
+                                    self._cleanup_live_and_print()
                                     text = data.get("text", "")
                                     console.print(f"[bold #FFD700]❯ [/]{text}")
                                     
@@ -336,9 +369,9 @@ class JarvisTUI:
                                     if new_title:
                                         self.session_title = new_title
                                         console.print(f"\n[bold #00F0FF]⬡ SESSION TITLE SET TO:[/] [bold #FFD700]{new_title}[/]")
-
+ 
                                 elif event_type == "approval_required":
-                                    cleanup_and_print()
+                                    self._cleanup_live_and_print()
                                     tool_name = data.get("function_name", "desktop action")
                                     console.print(
                                         Panel(
@@ -347,18 +380,20 @@ class JarvisTUI:
                                             border_style="#FFD700",
                                         )
                                     )
-
+ 
                                 elif event_type == "voice_ready":
-                                    cleanup_and_print()
+                                    self._cleanup_live_and_print()
                                     spoken = data.get("text", "")
                                     if spoken:
                                         asyncio.create_task(self.play_voice_reply(spoken))
                                     
                                 elif event_type == "turn_complete":
-                                    cleanup_and_print()
+                                    self._cleanup_live_and_print()
                                     console.print()
+                                    self.turn_complete_event.set()
             except Exception as e:
                 logger.debug(f"SSE listener reconnection pending: {e}")
+                self.turn_complete_event.set()
             await asyncio.sleep(2.0)
 
     async def handle_slash(self, cmd: str) -> bool:
@@ -380,7 +415,7 @@ class JarvisTUI:
             complete_while_typing=True,
             enable_history_search=True,
             history=FileHistory(str(history_path)),
-            multiline=True
+            multiline=False
         )
         
         with patch_stdout(raw=True):
@@ -470,140 +505,13 @@ class JarvisTUI:
                 except Exception as e:
                     console.print(f"[bold red]❌ Failed to send prompt to API server:[/] {e}")
                     return
-                    
-            live = None
-            reasoning_text = ""
-            response_text = ""
             
-            def cleanup_live_and_print_accumulators():
-                nonlocal live, reasoning_text, response_text
-                if live:
-                    live.stop()
-                    live = None
-                if reasoning_text.strip():
-                    console.print(Panel(reasoning_text.strip(), title="Thinking Processes", border_style="#FFD700", title_align="left"))
-                    reasoning_text = ""
-                if response_text.strip():
-                    console.print(Markdown(response_text))
-                    response_text = ""
- 
-            async with httpx.AsyncClient() as client:
-                try:
-                    async with client.stream(
-                        "GET", 
-                        f"http://127.0.0.1:{self.port}/v1/sessions/{self.session_id}/stream", 
-                        timeout=None
-                    ) as response:
-                        event_type = None
-                        async for line in response.aiter_lines():
-                            line = line.strip()
-                            if not line:
-                                continue
-                                
-                            if line.startswith("event:"):
-                                event_type = line.split(":", 1)[1].strip()
-                            elif line.startswith("data:"):
-                                data_str = line.split(":", 1)[1].strip()
-                                try:
-                                    import json
-                                    data = json.loads(data_str)
-                                except Exception:
-                                    data = {}
-                                    
-                                if event_type == "text_chunk":
-                                    text = data.get("text", "")
-                                    if text:
-                                        if not live:
-                                            live = Live(Group(), refresh_per_second=15, console=raw_console, transient=True)
-                                            live.start()
-                                        response_text += text
-                                        
-                                        renderables = []
-                                        if reasoning_text:
-                                            renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="#FFD700", title_align="left"))
-                                        if response_text:
-                                            renderables.append(Markdown(response_text))
-                                        live.update(Group(*renderables))
-                                        
-                                elif event_type == "reasoning_chunk":
-                                    text = data.get("text", "")
-                                    if text:
-                                        if not live:
-                                            live = Live(Group(), refresh_per_second=15, console=raw_console, transient=True)
-                                            live.start()
-                                        reasoning_text += text
-                                        
-                                        renderables = []
-                                        if reasoning_text:
-                                            renderables.append(Panel(reasoning_text, title="Thinking Processes", border_style="#FFD700", title_align="left"))
-                                        if response_text:
-                                            renderables.append(Markdown(response_text))
-                                        live.update(Group(*renderables))
-                                        
-                                elif event_type == "tool_call_start":
-                                    cleanup_live_and_print_accumulators()
-                                        
-                                    name = data.get("name", "").upper()
-                                    args = data.get("arguments", {})
-                                    console.print(f"\n[bold #E63946]⚙ TOOL EXECUTION:[/] [bold #FFD700]{name}[/]")
-                                    if args:
-                                        for k, v in args.items():
-                                            v_str = str(v).replace("\n", " ")
-                                            if len(v_str) > 150:
-                                                v_str = v_str[:150] + "... (truncated)"
-                                            console.print(f"  [bold #FFD700]▪ {k}:[/] [white]{v_str}[/]", highlight=False)
-                                            
-                                elif event_type == "tool_call_complete":
-                                    cleanup_live_and_print_accumulators()
-                                        
-                                    name = data.get("name", "").upper()
-                                    out = data.get("output", "") or data.get("error", "")
-                                    if len(out) > 1000:
-                                        out = out[:1000] + "\n... (truncated for readability)"
-                                        
-                                    console.print(Panel(
-                                        out,
-                                        title=f"[bold #FFD700]✔ {name} OUTPUT[/]",
-                                        border_style="#E63946",
-                                        title_align="left",
-                                        padding=(0, 1)
-                                    ))
-                                    
-                                elif event_type == "agent_changed":
-                                    new_agent = data.get("agent_id", "jarvis")
-                                    self.active_agent_id = new_agent
-                                    console.print(f"\n[bold #00F0FF]⬡ ACTIVE AGENT SWITCHED TO:[/] [bold #FFD700]{new_agent.upper()}[/]")
-                                    
-                                elif event_type == "title_changed":
-                                    new_title = data.get("title", "")
-                                    if new_title:
-                                        self.session_title = new_title
-                                        console.print(f"\n[bold #00F0FF]⬡ SESSION TITLE SET TO:[/] [bold #FFD700]{new_title}[/]")
- 
-                                elif event_type == "approval_required":
-                                    cleanup_live_and_print_accumulators()
-                                    tool_name = data.get("function_name", "desktop action")
-                                    console.print(
-                                        Panel(
-                                            f"Tool: {tool_name}\nApprove or reject in the Web HUD.",
-                                            title="[bold #FFD700]Desktop Action Pending Approval[/]",
-                                            border_style="#FFD700",
-                                        )
-                                    )
-
-                                elif event_type == "voice_ready":
-                                    cleanup_live_and_print_accumulators()
-                                    spoken = data.get("text", "")
-                                    if spoken:
-                                        asyncio.create_task(self.play_voice_reply(spoken))
- 
-                                elif event_type == "turn_complete":
-                                    break
-                except Exception as e:
-                    console.print(f"\n[bold #E63946]Error during SSE streaming:[/] {e}")
-                finally:
-                    cleanup_live_and_print_accumulators()
-                    console.print()
+            try:
+                await self.turn_complete_event.wait()
+            except asyncio.sleep:  # standard sleep/cancelled placeholder
+                pass
+            except asyncio.CancelledError:
+                pass
         finally:
             self.in_turn = False
 

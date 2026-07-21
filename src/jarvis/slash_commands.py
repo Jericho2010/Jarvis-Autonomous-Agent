@@ -32,7 +32,7 @@ async def handle_slash_command(tui, cmd: str) -> bool:
                     json=payload,
                     timeout=5.0,
                 )
-                tui.session_id = res.json()["session_id"]
+                tui.set_session(res.json()["session_id"])
                 try:
                     session_details = await client.get(f"http://127.0.0.1:{tui.port}/v1/sessions/{tui.session_id}", timeout=5.0)
                     tui.current_model = session_details.json().get("model") or "house-party"
@@ -175,14 +175,9 @@ async def handle_slash_command(tui, cmd: str) -> bool:
                     console.print(f"[bold #E63946]Session '{arg}' not found.[/bold #E63946]\n")
                     return True
                 
-                tui.session_id = matched_session["session_id"]
+                tui.set_session(matched_session["session_id"], title=matched_session.get("title"))
                 tui.current_model = matched_session.get("model") or "house-party"
                 tui.active_agent_id = matched_session.get("agent_id") or "jarvis"
-                tui.session_title = matched_session.get("title") or tui.session_id
-                
-                if hasattr(tui, "sse_task"):
-                    tui.sse_task.cancel()
-                tui.sse_task = asyncio.create_task(tui.sse_listener())
                 
                 console.print(f"[bold #FFD700]✓ Switched to session: {tui.session_title} ({tui.session_id})[/bold #FFD700]\n")
             except Exception as e:
