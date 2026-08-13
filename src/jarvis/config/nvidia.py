@@ -1,6 +1,8 @@
 import os
 import re
-from typing import Optional
+from typing import Iterable, List, Optional, Sequence
+
+import httpx
 
 _PLACEHOLDER_PATTERNS = (
     re.compile(r"^nvapi-your-key-here$", re.I),
@@ -9,6 +11,8 @@ _PLACEHOLDER_PATTERNS = (
     re.compile(r"^xxx+$", re.I),
     re.compile(r"^replace[-_]?me$", re.I),
 )
+
+NIM_API_BASE_URL = "https://integrate.api.nvidia.com/v1"
 
 
 def get_nvidia_api_key() -> str:
@@ -45,3 +49,56 @@ def format_nvidia_speech_error(exc: Exception) -> str:
     if len(message) > 400:
         return message[:400] + "…"
     return message
+
+
+async def fetch_nim_model_ids(
+    api_key: Optional[str] = None,
+    *,
+    base_url: str = NIM_API_BASE_URL,
+    timeout: float = 10.0,
+) -> List[str]:
+    """Return model IDs from NIM GET /v1/models. Empty list if probe fails."""
+    key = (api_key if api_key is not None else get_nvidia_api_key()).strip()
+    if nvidia_api_key_problem(key):
+        return []
+    url = f"{base_url.rstrip('/')}/models"
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.get(
+                url,
+                headers={"Authorization": f"Bearer {key}"},
+            )
+            response.raise_for_status()
+            payload = response.json()
+    except Exception:
+        return []
+
+    data = payload.get("data", payload if isinstance(payload, list) else [])
+    ids: List[str] = []
+    for item in data:
+        if isinstance(item, dict) and item.get("id"):
+            ids.append(str(item["id"]))
+        elif isinstance(item, str):
+            ids.append(item)
+    return ids
+
+
+async def missing_basket_model_ids(
+    basket: Sequence[str],
+    api_key: Optional[str] = None,
+    *,
+    base_url: str = NIM_API_BASE_URL,
+) -> List[str]:
+    """Return basket entries absent from the live NIM catalog."""
+    live = set(await fetch_nim_model_ids(api_key, base_url=base_url))
+    if not live:
+        return []
+    return [model for model in basket if model not in live]
+
+
+def format_missing_basket_warning(missing: Iterable[str]) -> str:
+    models = ", ".join(missing)
+    return (
+        f"NIM basket IDs missing from integrate.api.nvidia.com/v1/models: {models}. "
+        "Update NIM_MODEL_BASKET before these rotate to 410 Gone."
+    )

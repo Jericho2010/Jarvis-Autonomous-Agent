@@ -28,7 +28,12 @@ from jarvis.config.paths import (
     get_web_dist_dir,
     get_webvision_dir,
 )
-from jarvis.config.nvidia import format_nvidia_speech_error, nvidia_api_key_problem
+from jarvis.config.nvidia import (
+    format_missing_basket_warning,
+    format_nvidia_speech_error,
+    missing_basket_model_ids,
+    nvidia_api_key_problem,
+)
 from jarvis.memory.memory_manager import MemoryManager
 from jarvis.memory.extractor import finalize_session
 from jarvis.core.agent import create_jarvis_agent, DEFAULT_SYSTEM_PROMPT
@@ -86,6 +91,18 @@ memory = MemoryManager(get_db_path())
 startup_lock = asyncio.Lock()
 initialized = False
 
+# Serialize turns per session so TUI + Web cannot interleave history writes.
+_session_turn_locks: Dict[str, asyncio.Lock] = {}
+
+
+def _session_turn_lock(session_id: str) -> asyncio.Lock:
+    lock = _session_turn_locks.get(session_id)
+    if lock is None:
+        lock = asyncio.Lock()
+        _session_turn_locks[session_id] = lock
+    return lock
+
+
 async def init_services():
     global initialized, memory
     async with startup_lock:
@@ -96,6 +113,21 @@ async def init_services():
             initialized = True
 
 
+async def _probe_nim_basket_at_startup() -> None:
+    api_key = os.environ.get("NVIDIA_API_KEY", "")
+    if nvidia_api_key_problem(api_key):
+        logger.warning("Skipping NIM basket health probe: %s", nvidia_api_key_problem(api_key))
+        return
+    missing = await missing_basket_model_ids(NIM_MODEL_BASKET, api_key)
+    if missing:
+        logger.warning(format_missing_basket_warning(missing))
+    else:
+        logger.info(
+            "NIM basket health: all %d models present on integrate.api.nvidia.com",
+            len(NIM_MODEL_BASKET),
+        )
+
+
 @app.on_event("startup")
 async def on_startup():
     await init_services()
@@ -103,6 +135,7 @@ async def on_startup():
     await memory.upsert_preference(VOICE_MODE_PREF_KEY, False)
     check_system_dependencies()
     log_startup_display_warning()
+    await _probe_nim_basket_at_startup()
     manager = get_playwright_mcp_manager()
     ok, detail = manager.node_version_ok()
     if ok:
@@ -143,6 +176,8 @@ class CreateSessionRequest(BaseModel):
 def schedule_session_finalize(session_id: Optional[str]) -> None:
     if not session_id:
         return
+    # Drop in-process workflow immediately; finalize also clears after persistence.
+    clear_workflow_state(session_id)
     api_key = os.environ.get("NVIDIA_API_KEY", "")
 
     async def _run() -> None:
@@ -254,6 +289,18 @@ def synthesize_title(message: str) -> str:
 
 async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Optional[str] = None, files: Optional[List[dict]] = None):
     """Executes the agent turn in a background task and streams updates."""
+    async with _session_turn_lock(session_id):
+        await _run_agent_turn_locked(
+            session_id, prompt, exclude_client_id=exclude_client_id, files=files
+        )
+
+
+async def _run_agent_turn_locked(
+    session_id: str,
+    prompt: str,
+    exclude_client_id: Optional[str] = None,
+    files: Optional[List[dict]] = None,
+):
     # Set the ContextVar for the current task so tool telemetry knows the session_id
     current_session_id.set(session_id)
     
@@ -577,6 +624,7 @@ async def update_session_model(session_id: str, req: ModelUpdateRequest):
                 (normalized_model, session_id),
             )
             await conn.commit()
+        clear_workflow_state(session_id)
         logger.info(f"Updated session {session_id} model to {normalized_model}")
         return {"status": "success", "model": normalized_model}
     except Exception as e:

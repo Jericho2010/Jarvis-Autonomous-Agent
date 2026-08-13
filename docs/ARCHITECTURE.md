@@ -64,7 +64,8 @@ Basket defined in `src/jarvis/config/models.py` (`NIM_MODEL_BASKET`). Subagents 
 **Key design decisions:**
 
 - `max_retries=0`: SDK must not retry internally. Retry logic is owned by `_stream_with_fallback()`.
-- **Ordered house-party failover**: try every basket model in declared order on failure (no random sample).
+- **Ordered house-party failover**: try every basket model in declared order on failure (no random sample, no last-success reordering).
+- **Hard-fail fast**: EOL/`410`/`404` rotate immediately; non-primary attempts use shorter timeouts.
 - **No LLaMA models**: Hard codebase constraint.
 
 ### 1.3 ToolTelemetryMiddleware

@@ -17,6 +17,13 @@ logger = logging.getLogger("jarvis.agent")
 console = Console()
 
 from jarvis.config.models import NIM_MODEL_BASKET, select_failover_models
+from jarvis.config.nvidia import NIM_API_BASE_URL
+
+# Primary gets a longer budget; failover models fail faster so the basket can rotate.
+PRIMARY_ATTEMPT_TIMEOUT_S = 30.0
+FALLBACK_ATTEMPT_TIMEOUT_S = 12.0
+PRIMARY_CHUNK_TIMEOUT_S = 30.0
+FALLBACK_CHUNK_TIMEOUT_S = 15.0
 
 
 def _is_rate_limit_error(exc: Exception) -> bool:
@@ -24,16 +31,38 @@ def _is_rate_limit_error(exc: Exception) -> bool:
     return "429" in text or "rate limit" in text or "too many requests" in text
 
 
+def _is_hard_model_error(exc: Exception) -> bool:
+    """True for EOL / not-found style failures that will never succeed on retry."""
+    text = str(exc).lower()
+    markers = (
+        "410",
+        "404",
+        "gone",
+        "end of life",
+        "no longer available",
+        "not found",
+        "model_not_found",
+        "does not exist",
+        "unknown model",
+    )
+    return any(marker in text for marker in markers)
+
+
+def _attempt_timeout(index: int) -> float:
+    return PRIMARY_ATTEMPT_TIMEOUT_S if index == 0 else FALLBACK_ATTEMPT_TIMEOUT_S
+
+
+def _chunk_timeout(index: int) -> float:
+    return PRIMARY_CHUNK_TIMEOUT_S if index == 0 else FALLBACK_CHUNK_TIMEOUT_S
+
+
 def _ordered_failover_models(
     primary_model: str,
     model_basket: List[str],
-    last_success_model: Optional[str],
 ) -> List[str]:
-    models = select_failover_models(primary_model, list(model_basket))
-    if last_success_model and last_success_model in model_basket:
-        rest = [model for model in models if model != last_success_model]
-        return [last_success_model, *rest]
-    return models
+    """Return basket order exactly as declared (glm primary for house-party)."""
+    return select_failover_models(primary_model, list(model_basket))
+
 
 def format_result(result: Any) -> str:
     if result is None:
@@ -141,7 +170,7 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
     def __init__(
         self,
         api_key: str,
-        base_url: str = "https://integrate.api.nvidia.com/v1",
+        base_url: str = NIM_API_BASE_URL,
         model_basket: Optional[List[str]] = None,
         **kwargs: Any
     ):
@@ -200,7 +229,6 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
         active_models = _ordered_failover_models(
             self.primary_model,
             list(self.model_basket),
-            self._last_success_model,
         )
 
         for index, model in enumerate(active_models):
@@ -216,13 +244,24 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
                     
                 response = await asyncio.wait_for(
                     client.get_response(messages=messages, options=opt_copy, **kwargs),
-                    timeout=30.0
+                    timeout=_attempt_timeout(index),
                 )
                 self._last_success_model = model
                 return response
             except (asyncio.TimeoutError, Exception) as e:
-                logger.warning(f"Stark Core Matrix // Model {model} failed: {e!r}. Traceback:\n{traceback.format_exc()}. Rotating...")
+                if _is_hard_model_error(e):
+                    logger.warning(
+                        "Stark Core Matrix // Model %s hard-failed (EOL/not found); rotating immediately: %s",
+                        model,
+                        e,
+                    )
+                else:
+                    logger.warning(
+                        f"Stark Core Matrix // Model {model} failed: {e!r}. Traceback:\n{traceback.format_exc()}. Rotating..."
+                    )
                 last_exception = e
+                if _is_hard_model_error(e):
+                    continue
                 if _is_rate_limit_error(e) and index + 1 < len(active_models):
                     await asyncio.sleep(2 if index == 0 else 5)
         
@@ -239,7 +278,6 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
         active_models = _ordered_failover_models(
             self.primary_model,
             list(self.model_basket),
-            self._last_success_model,
         )
 
         for index, model in enumerate(active_models):
@@ -255,21 +293,34 @@ class StarkNIMChatClient(FunctionInvocationLayer, BaseChatClient):
                 
                 stream = await asyncio.wait_for(
                     client.get_response(messages=messages, stream=True, options=opt_copy, **kwargs),
-                    timeout=30.0
+                    timeout=_attempt_timeout(index),
                 )
                 
                 iterator = aiter(stream)
                 while True:
                     try:
-                        chunk = await asyncio.wait_for(anext(iterator), timeout=30.0)
+                        chunk = await asyncio.wait_for(
+                            anext(iterator), timeout=_chunk_timeout(index)
+                        )
                         yield chunk
                     except StopAsyncIteration:
                         break
                 self._last_success_model = model
                 return
             except (asyncio.TimeoutError, Exception) as e:
-                logger.warning(f"Stark Core Matrix // Streaming model {model} failed: {e!r}. Traceback:\n{traceback.format_exc()}. Rotating...")
+                if _is_hard_model_error(e):
+                    logger.warning(
+                        "Stark Core Matrix // Streaming model %s hard-failed (EOL/not found); rotating immediately: %s",
+                        model,
+                        e,
+                    )
+                else:
+                    logger.warning(
+                        f"Stark Core Matrix // Streaming model {model} failed: {e!r}. Traceback:\n{traceback.format_exc()}. Rotating..."
+                    )
                 last_exception = e
+                if _is_hard_model_error(e):
+                    continue
                 if _is_rate_limit_error(e) and index + 1 < len(active_models):
                     await asyncio.sleep(2 if index == 0 else 5)
                 
