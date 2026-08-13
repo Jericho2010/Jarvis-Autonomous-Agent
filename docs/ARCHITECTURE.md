@@ -42,10 +42,10 @@ The `Agent` manages a turn-based agentic loop:
 │                                     │
 │  ┌─────────────────────────────┐    │
 │  │  Stark Core Matrix Basket   │    │
-│  │  - deepseek-v4-pro          │    │
-│  │  - deepseek-v4-flash        │    │
-│  │  - nemotron-3-ultra         │    │
-│  │  - kimi-k2.6                │    │
+│  │  - glm-5.2 (primary)        │    │
+│  │  - minimax-m3               │    │
+│  │  - nemotron-3-super         │    │
+│  │  - deepseek-v4-flash-0731   │    │
 │  │  - step-3.7-flash           │    │
 │  └──────────┬──────────────────┘    │
 │             │  house_party mode     │
@@ -53,18 +53,18 @@ The `Agent` manages a turn-based agentic loop:
 │  ┌──────────────────────────────┐   │
 │  │  _stream_with_fallback()     │   │
 │  │  • max_retries=0             │   │
-│  │  • 15s chunk timeout         │   │
+│  │  • Ordered full-basket fail  │   │
 │  │  • Auto-rotate on failure    │   │
 │  └──────────────────────────────┘   │
 └─────────────────────────────────────┘
 ```
 
-Basket defined in `src/jarvis/config/models.py` (`NIM_MODEL_BASKET`). Subagents use `SUBAGENT_MODEL_BASKET` (excludes nemotron for reliability during multi-tool rounds).
+Basket defined in `src/jarvis/config/models.py` (`NIM_MODEL_BASKET`). Subagents use the same ordered `SUBAGENT_MODEL_BASKET` (via house-party in each specialist `config.yaml`).
 
 **Key design decisions:**
 
 - `max_retries=0`: SDK must not retry internally. Retry logic is owned by `_stream_with_fallback()`.
-- **15-second async chunk timeout**: Stalled mid-stream completions rotate to the next model.
+- **Ordered house-party failover**: try every basket model in declared order on failure (no random sample).
 - **No LLaMA models**: Hard codebase constraint.
 
 ### 1.3 ToolTelemetryMiddleware

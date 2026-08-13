@@ -482,6 +482,14 @@ async def run_handoff_turn(
         memory=memory,
     )
     async with state.turn_lock:
-        _, accumulated_text = await _drain_workflow_run(session_id, state, message=user_message)
-        await broadcast_event(session_id, "agent_changed", {"agent_id": "jarvis"})
-        return accumulated_text
+        try:
+            _, accumulated_text = await _drain_workflow_run(
+                session_id, state, message=user_message
+            )
+            await broadcast_event(session_id, "agent_changed", {"agent_id": "jarvis"})
+            return accumulated_text
+        except Exception:
+            # Mid-run failures leave in-flight executor messages; discard so the
+            # next turn rebuilds a clean Workflow (no checkpoint recovery path).
+            clear_workflow_state(session_id)
+            raise

@@ -581,15 +581,15 @@ export default function App() {
           '### Cognitive Sub-routines Matrix\n',
           '**F.R.I.D.A.Y. (Tactical HUD Assistant)**',
           '  ▪ **Focus:** Desktop automation, window management, screen captures & execution.',
-          '  ▪ **Model:** `nvidia/stepfun-ai/step-3.7-flash`',
+          '  ▪ **Model:** `house-party` (Stark Core Matrix)',
           "  ▪ **Usage:** Ask J.A.R.V.I.S.: 'Ask Friday to take a screenshot' or 'Run command on Friday'.\n",
           '**H.O.M.E.R. (Scholarly Research Intel)**',
           '  ▪ **Focus:** Multi-engine web search, clean page structures, Playwright navigation & grounding.',
-          '  ▪ **Model:** `nvidia/mistralai/mistral-large-3-675b-instruct-2512`',
+          '  ▪ **Model:** `house-party` (Stark Core Matrix)',
           "  ▪ **Usage:** Ask J.A.R.V.I.S.: 'Ask Homer to search the web for...'.\n",
           '**P.L.A.T.O. (Logical Strategy Consultant)**',
           '  ▪ **Focus:** Deep reasoning, static code analysis, complex problem solving & drafting.',
-          '  ▪ **Model:** `nvidia/deepseek-ai/deepseek-v4-pro`',
+          '  ▪ **Model:** `house-party` (Stark Core Matrix)',
           "  ▪ **Usage:** Ask J.A.R.V.I.S.: 'Ask Plato to review my code in...'"
         ];
         setMessages(prev => [...prev, {

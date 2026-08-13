@@ -1,20 +1,15 @@
-import random
 from typing import List, Optional
 
 NIM_MODEL_BASKET: List[str] = [
+    "z-ai/glm-5.2",
+    "minimaxai/minimax-m3",
     "nvidia/nemotron-3-super-120b-a12b",
-    "deepseek-ai/deepseek-v4-pro",
-    "stepfun-ai/step-3.5-flash",
-    "nvidia/nemotron-mini-4b-instruct",
+    "deepseek-ai/deepseek-v4-flash-0731",
+    "stepfun-ai/step-3.7-flash",
 ]
 
-# Subagents run many tool rounds per turn; omit flaky/slow models from their rotation.
-SUBAGENT_MODEL_BASKET: List[str] = [
-    "nvidia/nemotron-3-super-120b-a12b",
-    "deepseek-ai/deepseek-v4-pro",
-    "stepfun-ai/step-3.5-flash",
-    "nvidia/nemotron-mini-4b-instruct",
-]
+# Same ordered failover pool as the core agent (subagents use house-party via config.yaml).
+SUBAGENT_MODEL_BASKET: List[str] = list(NIM_MODEL_BASKET)
 
 HOUSE_PARTY_ALIASES = {
     "house-party",
@@ -92,20 +87,21 @@ def apply_primary_model(client, model: Optional[str]) -> None:
 
 
 def select_failover_models(primary_model: str, basket_pool: List[str]) -> List[str]:
-    """Build the ordered model list for Stark Core Matrix failover."""
+    """Build the ordered model list for Stark Core Matrix failover.
+
+    House-party returns the full basket in declared order.
+    A pinned model is tried first, then the remaining basket entries in order.
+    """
     pool = list(basket_pool)
     if not pool:
         return []
 
     if is_house_party(primary_model):
-        sample_size = min(2, len(pool))
-        return random.sample(pool, sample_size)
+        return pool
 
     resolved = resolve_basket_model(primary_model) or primary_model
     if resolved in pool:
         remaining = [model for model in pool if model != resolved]
-        extras = random.sample(remaining, min(2, len(remaining)))
-        return [resolved, *extras]
+        return [resolved, *remaining]
 
-    sample_size = min(2, len(pool))
-    return random.sample(pool, sample_size)
+    return pool

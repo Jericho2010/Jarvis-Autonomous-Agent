@@ -121,17 +121,17 @@ async def handle_slash_command(tui, cmd: str) -> bool:
         lines = [
             "[bold #00F0FF]F.R.I.D.A.Y. (Tactical HUD Assistant)[/]",
             "  [bold #FFD700]▪ Focus:[/] Desktop automation, window management, screen captures & execution.",
-            "  [bold #FFD700]▪ Model:[/] nvidia/stepfun-ai/step-3.7-flash",
+            "  [bold #FFD700]▪ Model:[/] house-party (Stark Core Matrix)",
             "  [bold #FFD700]▪ Usage:[/] Ask J.A.R.V.I.S.: 'Ask Friday to take a screenshot' or 'Run command on Friday'.",
             "",
             "[bold #00F0FF]H.O.M.E.R. (Scholarly Research Intel)[/]",
             "  [bold #FFD700]▪ Focus:[/] Multi-engine web search, clean page structures, Playwright navigation & grounding.",
-            "  [bold #FFD700]▪ Model:[/] nvidia/mistralai/mistral-large-3-675b-instruct-2512",
+            "  [bold #FFD700]▪ Model:[/] house-party (Stark Core Matrix)",
             "  [bold #FFD700]▪ Usage:[/] Ask J.A.R.V.I.S.: 'Ask Homer to search the web for...'.",
             "",
             "[bold #00F0FF]P.L.A.T.O. (Logical Strategy Consultant)[/]",
             "  [bold #FFD700]▪ Focus:[/] Deep reasoning, static code analysis, complex problem solving & drafting.",
-            "  [bold #FFD700]▪ Model:[/] nvidia/deepseek-ai/deepseek-v4-pro",
+            "  [bold #FFD700]▪ Model:[/] house-party (Stark Core Matrix)",
             "  [bold #FFD700]▪ Usage:[/] Ask J.A.R.V.I.S.: 'Ask Plato to review my code in...'"
         ]
         console.print(Panel("\n".join(lines), title="Cognitive Sub-routines Matrix", border_style="#E63946"))

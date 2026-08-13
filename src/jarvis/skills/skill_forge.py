@@ -4,6 +4,7 @@ import logging
 import importlib.util
 import subprocess
 import sys
+import types
 from pathlib import Path
 from typing import Any, List, Optional
 from agent_framework import tool, FunctionTool
@@ -86,6 +87,15 @@ def install_dependency(import_name: str) -> bool:
 def _exec_module_from_file(module_name: str, py_file: str | Path):
     """Load a Python module from a file path (registers in sys.modules for dataclasses)."""
     py_path = Path(py_file)
+    # Ensure dotted parents exist so dataclasses can resolve __module__.
+    if "." in module_name:
+        parts = module_name.split(".")
+        for i in range(1, len(parts)):
+            parent = ".".join(parts[:i])
+            if parent not in sys.modules:
+                pkg = types.ModuleType(parent)
+                pkg.__path__ = []  # mark as package
+                sys.modules[parent] = pkg
     spec = importlib.util.spec_from_file_location(module_name, py_path)
     if not spec or not spec.loader:
         raise ImportError(f"Cannot load module spec for {py_path}")
@@ -105,7 +115,10 @@ def load_skills_from_dir(skills_dir: Path) -> List[FunctionTool]:
     for py_file in glob.glob(str(skills_dir / "*.py")):
         if py_file.endswith("__init__.py"):
             continue
-        module_name = Path(py_file).stem
+        stem = Path(py_file).stem
+        # Unique dotted name avoids stem collisions across skill dirs and
+        # prevents dataclass reload races on a bare 'app_launcher' module key.
+        module_name = f"jarvis_skills.{skills_dir.resolve().name}.{stem}"
         try:
             module = _exec_module_from_file(module_name, py_file)
             # Find all FunctionTool instances defined in the module
@@ -115,7 +128,7 @@ def load_skills_from_dir(skills_dir: Path) -> List[FunctionTool]:
                     if attr not in tools:
                         tools.append(attr)
         except Exception as e:
-            logger.error(f"Failed to load skill module {module_name} from {py_file}: {e}")
+            logger.error(f"Failed to load skill module {stem} from {py_file}: {e}")
             
     return tools
 

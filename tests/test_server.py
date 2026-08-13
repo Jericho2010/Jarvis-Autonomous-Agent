@@ -177,13 +177,13 @@ async def test_session_detail_and_model_endpoints():
         
         res_set_model = await client.post(
             f"/v1/sessions/{session_id}/model",
-            json={"model": "nvidia/deepseek-ai/deepseek-v4-pro"}
+            json={"model": "nvidia/z-ai/glm-5.2"}
         )
         assert res_set_model.status_code == 200
-        assert res_set_model.json()["model"] == "deepseek-ai/deepseek-v4-pro"
+        assert res_set_model.json()["model"] == "z-ai/glm-5.2"
 
         res_detail_updated = await client.get(f"/v1/sessions/{session_id}")
-        assert res_detail_updated.json()["model"] == "deepseek-ai/deepseek-v4-pro"
+        assert res_detail_updated.json()["model"] == "z-ai/glm-5.2"
 
         res_invalid_model = await client.post(
             f"/v1/sessions/{session_id}/model",

@@ -152,18 +152,34 @@ class JarvisTUI:
                     self.session_id = "local_fallback"
                     return
 
-        # Initialize session parameters
+        # Join the same session the Web HUD would (latest with messages), or create one.
         async with httpx.AsyncClient() as client:
             try:
-                res = await client.post(f"http://127.0.0.1:{self.port}/v1/sessions", json={}, timeout=5.0)
-                session_id = res.json()["session_id"]
-                session_title = session_id
-                
-                try:
-                    session_details = await client.get(f"http://127.0.0.1:{self.port}/v1/sessions/{session_id}", timeout=5.0)
-                    self.current_model = session_details.json().get("model") or "house-party"
-                except Exception:
+                sessions_res = await client.get(f"http://127.0.0.1:{self.port}/v1/sessions", timeout=5.0)
+                sessions_res.raise_for_status()
+                sessions = sessions_res.json()
+                if sessions:
+                    session_id = sessions[0]["session_id"]
+                    session_title = sessions[0].get("title") or session_id
+                    self.current_model = sessions[0].get("model") or "house-party"
+                else:
+                    res = await client.post(
+                        f"http://127.0.0.1:{self.port}/v1/sessions", json={}, timeout=5.0
+                    )
+                    res.raise_for_status()
+                    session_id = res.json()["session_id"]
+                    session_title = session_id
                     self.current_model = "house-party"
+
+                try:
+                    session_details = await client.get(
+                        f"http://127.0.0.1:{self.port}/v1/sessions/{session_id}", timeout=5.0
+                    )
+                    self.current_model = session_details.json().get("model") or self.current_model
+                    if session_details.json().get("title"):
+                        session_title = session_details.json()["title"]
+                except Exception:
+                    pass
                 self.set_session(session_id, session_title)
             except Exception as e:
                 console.print(f"[bold red]❌ Failed to initialize dialogue session:[/] {e}")

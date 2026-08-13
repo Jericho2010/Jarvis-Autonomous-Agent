@@ -442,6 +442,9 @@ async def run_agent_turn(session_id: str, prompt: str, exclude_client_id: Option
         
     except Exception as e:
         logger.exception(f"Error executing agent turn for session {session_id}")
+        # Drop poisoned MAF workflow state so the next turn is not blocked by
+        # leftover in-flight executor messages from a mid-run failure.
+        clear_workflow_state(session_id)
         await broadcast_event(session_id, "text_chunk", {"text": f"\n\n[bold red]System Error:[/] {e}\n"})
         await broadcast_event(session_id, "turn_complete", {"session_id": session_id})
 

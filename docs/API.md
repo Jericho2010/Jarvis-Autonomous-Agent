@@ -156,10 +156,10 @@ Serve a screenshot from the `webvision/` directory (Friday HUD or Playwright cap
 {
   "models": [
     "house-party",
-    "deepseek-ai/deepseek-v4-pro",
-    "deepseek-ai/deepseek-v4-flash",
-    "nvidia/nemotron-3-ultra-550b-a55b",
-    "moonshotai/kimi-k2.6",
+    "z-ai/glm-5.2",
+    "minimaxai/minimax-m3",
+    "nvidia/nemotron-3-super-120b-a12b",
+    "deepseek-ai/deepseek-v4-flash-0731",
     "stepfun-ai/step-3.7-flash"
   ]
 }
